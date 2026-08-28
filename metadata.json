@@ -1,0 +1,7 @@
+{
+  "name": "RPP Merdeka AI",
+  "description": "Aplikasi pembuat RPP dan Modul Ajar Kurikulum Merdeka otomatis berbasis AI dengan pembelajaran berdiferensiasi, rubrik asesmen, editor terintegrasi, dan ekspor dokumen siap cetak.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

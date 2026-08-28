@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Open Book Base -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,68 C45,62 32,64 22,70 V44 C32,38 45,36 54,42 C63,36 76,38 86,44 V70 C76,64 63,62 54,68 Z" />
+    
+    <!-- Book Center Binding -->
+    <path
+        android:fillColor="#1E3A8A"
+        android:pathData="M52,42 H56 V68 H52 Z" />
+
+    <!-- Graduation Cap Top -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,26 L18,44 L54,62 L90,44 Z" />
+    <path
+        android:fillColor="#CBD5E1"
+        android:pathData="M54,62 L18,44 L18,52 L54,70 L90,52 L90,44 Z" />
+    
+    <!-- Cap Base -->
+    <path
+        android:fillColor="#2563EB"
+        android:pathData="M76,49 V65 C76,68 70,72 54,74 C38,72 32,68 32,65 V49 L54,58 Z" />
+    
+    <!-- Tassel / Accent Star -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M80,47 L83,59 L80,61 L77,59 Z" />
+</vector>
