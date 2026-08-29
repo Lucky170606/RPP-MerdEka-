@@ -26,11 +26,11 @@ object GeminiService {
     private const val TAG = "GeminiService"
     
     val SUPPORTED_MODELS = listOf(
-        "gemini-3.6-flash",
-        "gemini-3.5-flash",
-        "gemini-2.5-flash",
         "gemini-2.0-flash",
         "gemini-1.5-flash",
+        "gemini-3.6-flash",
+        "gemini-3.7-flash",
+        "gemini-2.5-flash",
         "gemini-flash"
     )
 
@@ -81,7 +81,7 @@ object GeminiService {
             lastModelAttempted = model
             try {
                 val request = Request.Builder()
-                    .url("${getEndpoint(model)}?key=$apiKey")
+                    .url(getEndpoint(model))
                     .header("x-goog-api-key", apiKey)
                     .header("Content-Type", "application/json")
                     .post(requestBody)
@@ -252,7 +252,7 @@ object GeminiService {
             for (model in SUPPORTED_MODELS) {
                 try {
                     val request = Request.Builder()
-                        .url("${getEndpoint(model)}?key=$apiKey")
+                        .url(getEndpoint(model))
                         .header("x-goog-api-key", apiKey)
                         .header("Content-Type", "application/json")
                         .post(requestBody)
@@ -417,7 +417,7 @@ object GeminiService {
             for (model in SUPPORTED_MODELS) {
                 try {
                     val request = Request.Builder()
-                        .url("${getEndpoint(model)}?key=$apiKey")
+                        .url(getEndpoint(model))
                         .header("x-goog-api-key", apiKey)
                         .header("Content-Type", "application/json")
                         .post(requestBody)
@@ -479,7 +479,7 @@ object GeminiService {
         for (model in SUPPORTED_MODELS) {
             try {
                 val request = Request.Builder()
-                    .url("${getEndpoint(model)}?key=$apiKey")
+                    .url(getEndpoint(model))
                     .header("x-goog-api-key", apiKey)
                     .header("Content-Type", "application/json")
                     .post(requestBody)

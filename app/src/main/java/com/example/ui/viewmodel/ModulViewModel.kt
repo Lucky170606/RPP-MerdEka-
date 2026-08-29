@@ -237,11 +237,20 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
     val generationState = MutableStateFlow<GenerationState>(GenerationState.Idle)
     val isEnhancingSection = MutableStateFlow(false)
 
+    private var previousScreen: Screen = Screen.Home
+
     fun navigateTo(screen: Screen) {
+        if (_currentScreen.value != screen) {
+            previousScreen = _currentScreen.value
+        }
         _currentScreen.value = screen
         if (screen is Screen.Editor) {
             loadModulById(screen.modulId)
         }
+    }
+
+    fun navigateBack() {
+        _currentScreen.value = previousScreen
     }
 
     fun loadModulById(id: Long) {

@@ -31,8 +31,14 @@ object ApiKeyManager {
         }
     }
 
+    private fun sanitizeKey(key: String?): String? {
+        if (key.isNullOrBlank()) return null
+        val clean = key.trim().trim('"', '\'', '`', '\n', '\r', '\t', ' ')
+        return if (clean.isNotBlank() && clean != "DEFAULT_API_KEY" && clean != "your_api_key_here") clean else null
+    }
+
     fun saveApiKey(context: Context, apiKey: String) {
-        val cleanKey = apiKey.trim()
+        val cleanKey = sanitizeKey(apiKey) ?: ""
         val prefs = getSharedPreferences(context)
         prefs.edit().putString(KEY_API_KEY, cleanKey).apply()
 
@@ -69,9 +75,9 @@ object ApiKeyManager {
         }
 
         if (!userKey.isNullOrBlank()) {
-            val trimmed = userKey.trim()
-            if (trimmed.isNotBlank() && trimmed != "DEFAULT_API_KEY") {
-                return trimmed
+            val sanitized = sanitizeKey(userKey)
+            if (sanitized != null) {
+                return sanitized
             }
         }
 
@@ -88,8 +94,11 @@ object ApiKeyManager {
             null
         }
 
-        if (!buildKey.isNullOrBlank() && buildKey != "DEFAULT_API_KEY" && buildKey != "your_api_key_here") {
-            return buildKey.trim()
+        if (!buildKey.isNullOrBlank()) {
+            val sanitized = sanitizeKey(buildKey)
+            if (sanitized != null) {
+                return sanitized
+            }
         }
 
         return null

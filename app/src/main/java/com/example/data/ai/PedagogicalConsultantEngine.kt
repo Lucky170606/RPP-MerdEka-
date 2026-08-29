@@ -3,7 +3,8 @@ package com.example.data.ai
 data class ChatMessage(
     val sender: String, // "USER" or "AI"
     val content: String,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val source: String? = null
 )
 
 data class PromptInspiration(

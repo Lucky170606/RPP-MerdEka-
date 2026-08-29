@@ -60,7 +60,7 @@ class MainActivity : ComponentActivity() {
 
                     // BackHandler global yang cerdas: hanya untuk layar yang tidak punya back handler sendiri
                     BackHandler(enabled = currentScreen !is Screen.Home && currentScreen !is Screen.Onboarding && currentScreen !is Screen.Editor) {
-                        viewModel.navigateTo(Screen.Home)
+                        viewModel.navigateBack()
                     }
                     
                     when (val screen = currentScreen) {
@@ -78,7 +78,7 @@ class MainActivity : ComponentActivity() {
                         is Screen.Atp -> AtpScreen(viewModel = viewModel, onNavigateBack = { viewModel.navigateTo(Screen.Home) })
                         is Screen.RaporKktp -> RaporKktpScreen(onNavigateBack = { viewModel.navigateTo(Screen.Home) })
                         is Screen.ObservationJournal -> ObservationJournalScreen(onNavigateBack = { viewModel.navigateTo(Screen.Home) })
-                        is Screen.Settings -> SettingsScreen(onNavigateBack = { viewModel.navigateTo(Screen.Home) })
+                        is Screen.Settings -> SettingsScreen(onNavigateBack = { viewModel.navigateBack() })
                     }
                 }
             }

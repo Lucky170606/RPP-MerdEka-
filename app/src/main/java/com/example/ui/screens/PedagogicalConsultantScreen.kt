@@ -32,9 +32,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.ai.ChatMessage
@@ -45,6 +50,7 @@ import com.example.ui.viewmodel.ModulViewModel
 import com.example.ui.viewmodel.Screen
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.regex.Pattern
 
 data class QuickPromptCategory(
     val icon: ImageVector,
@@ -79,11 +85,17 @@ fun PedagogicalConsultantScreen(
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
-    var isOnlineActive by remember { mutableStateOf(GeminiService.isAvailable(context)) }
+    var isOnlineActive by remember { mutableStateOf(false) }
 
     // Recheck connectivity on enter
     LaunchedEffect(Unit) {
-        isOnlineActive = GeminiService.isAvailable(context)
+        val hasKey = GeminiService.isAvailable(context)
+        if (hasKey) {
+            val test = GeminiService.testConnection(context)
+            isOnlineActive = test.isSuccess
+        } else {
+            isOnlineActive = false
+        }
     }
 
     val starterCards = listOf(
@@ -140,10 +152,9 @@ fun PedagogicalConsultantScreen(
             }
             
             // Check real-time connectivity & API Key
-            val currentlyOnline = GeminiService.isAvailable(context)
-            isOnlineActive = currentlyOnline
-
-            val answer = if (currentlyOnline) {
+            val hasKey = GeminiService.isAvailable(context)
+            var usedSource = "Offline Kurikulum Merdeka"
+            val answer = if (hasKey) {
                 try {
                     val aiPrompt = """
                         Sebagai konsultan ahli Kurikulum Merdeka Kemendikbudristek, berikan panduan praktis, terstruktur, dan aplikatif untuk pertanyaan guru berikut:
@@ -155,23 +166,31 @@ fun PedagogicalConsultantScreen(
                         - Gunakan format teks rapi dan hindari rumus LaTeX.
                     """.trimIndent()
 
-                    val result = withTimeoutOrNull(60000L) {
+                    val result = withTimeoutOrNull(45000L) {
                         GeminiService.generateText(context, aiPrompt)
                     }
 
                     if (result.isNullOrBlank()) {
+                        isOnlineActive = false
+                        usedSource = "Offline Kurikulum Merdeka"
                         PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
                     } else {
+                        isOnlineActive = true
+                        usedSource = "Gemini AI"
                         result
                     }
                 } catch (e: Exception) {
+                    isOnlineActive = false
+                    usedSource = "Offline Kurikulum Merdeka"
                     PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
                 }
             } else {
+                isOnlineActive = false
+                usedSource = "Offline Kurikulum Merdeka"
                 PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
             }
 
-            messages.add(ChatMessage(sender = "AI", content = answer))
+            messages.add(ChatMessage(sender = "AI", content = answer, source = usedSource))
             isProcessing = false
             if (messages.isNotEmpty()) {
                 listState.animateScrollToItem(messages.size - 1)
@@ -238,11 +257,11 @@ fun PedagogicalConsultantScreen(
                                 modifier = Modifier
                                     .size(7.dp)
                                     .clip(CircleShape)
-                                    .background(if (isOnlineActive) EduGreen600 else EduAmber600)
+                                    .background(if (isOnlineActive) EduGreen600 else Color(0xFF94A3B8))
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (isOnlineActive) "Gemini AI Terhubung" else "Mode Offline (Klik utk Atur API Key)",
+                                text = if (isOnlineActive) "Gemini AI Terhubung" else "Mode Offline Kurikulum Merdeka",
                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Medium),
                                 color = if (isOnlineActive) EduGreen600 else MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -298,6 +317,7 @@ fun PedagogicalConsultantScreen(
                     } else {
                         ModernAiBubble(
                             content = msg.content,
+                            source = msg.source,
                             onCopy = {
                                 clipboardManager.setText(AnnotatedString(msg.content))
                                 Toast.makeText(context, "Jawaban disalin ke papan klip", Toast.LENGTH_SHORT).show()
@@ -473,6 +493,7 @@ fun ModernUserBubble(content: String) {
 @Composable
 fun ModernAiBubble(
     content: String,
+    source: String? = null,
     onCopy: () -> Unit
 ) {
     Row(
@@ -515,30 +536,118 @@ fun ModernAiBubble(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Action Row
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                modifier = Modifier.clickable(onClick = onCopy)
+            // Action Row with Source Badge and Copy Button
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                if (!source.isNullOrBlank()) {
+                    val isGemini = source.contains("Gemini", ignoreCase = true)
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = if (isGemini) Color(0xFFDCFCE7) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
+                        border = BorderStroke(1.dp, if (isGemini) Color(0xFF86EFAC) else MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isGemini) Icons.Default.AutoAwesome else Icons.Default.MenuBook,
+                                contentDescription = null,
+                                tint = if (isGemini) Color(0xFF15803D) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(11.dp)
+                            )
+                            Text(
+                                text = if (isGemini) "Gemini AI" else "Kurikulum Merdeka",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.SemiBold),
+                                color = if (isGemini) Color(0xFF15803D) else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.clickable(onClick = onCopy)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.ContentCopy,
-                        contentDescription = "Salin Jawaban",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(13.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "Salin",
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ContentCopy,
+                            contentDescription = "Salin Jawaban",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(11.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Salin",
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Medium),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
+        }
+    }
+}
+
+fun parseMarkdownInline(text: String): AnnotatedString {
+    return buildAnnotatedString {
+        // Match **bold**, *italic*, _italic_, `code`
+        val pattern = Pattern.compile("(\\*\\*(.+?)\\*\\*)|(\\*(.+?)\\*)|(_(.+?)_)|(`(.+?)`)")
+        val matcher = pattern.matcher(text)
+        var lastIndex = 0
+
+        while (matcher.find()) {
+            val start = matcher.start()
+            val end = matcher.end()
+
+            if (start > lastIndex) {
+                val plainText = text.substring(lastIndex, start).replace("*", "")
+                append(plainText)
+            }
+
+            when {
+                // **bold**
+                matcher.group(2) != null -> {
+                    val boldText = matcher.group(2)!!
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                        append(boldText.replace("*", ""))
+                    }
+                }
+                // *italic / emphasis*
+                matcher.group(4) != null -> {
+                    val italicText = matcher.group(4)!!
+                    withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, fontStyle = FontStyle.Italic)) {
+                        append(italicText.replace("*", ""))
+                    }
+                }
+                // _italic_
+                matcher.group(6) != null -> {
+                    val italicText = matcher.group(6)!!
+                    withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+                        append(italicText.replace("*", ""))
+                    }
+                }
+                // `code`
+                matcher.group(8) != null -> {
+                    val codeText = matcher.group(8)!!
+                    withStyle(SpanStyle(fontFamily = FontFamily.Monospace, background = Color(0x15000000))) {
+                        append(" $codeText ")
+                    }
+                }
+            }
+            lastIndex = end
+        }
+
+        if (lastIndex < text.length) {
+            val remaining = text.substring(lastIndex).replace("*", "")
+            append(remaining)
         }
     }
 }
@@ -550,7 +659,7 @@ fun RenderMarkdownBlocks(text: String) {
         paragraphs.forEach { paragraph ->
             val trimmed = paragraph.trim()
             if (trimmed.startsWith("###") || trimmed.startsWith("##") || trimmed.startsWith("#")) {
-                val headingText = trimmed.replace(Regex("^#+\\s*"), "")
+                val headingText = trimmed.replace(Regex("^#+\\s*"), "").replace("*", "")
                 Text(
                     text = headingText,
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp),
@@ -573,7 +682,7 @@ fun RenderMarkdownBlocks(text: String) {
                                     .background(MaterialTheme.colorScheme.primary)
                             )
                             Text(
-                                text = cleanLine.replace("**", ""),
+                                text = parseMarkdownInline(cleanLine),
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     fontSize = 13.sp,
                                     lineHeight = 19.sp
@@ -585,7 +694,7 @@ fun RenderMarkdownBlocks(text: String) {
                 }
             } else {
                 Text(
-                    text = trimmed.replace("**", ""),
+                    text = parseMarkdownInline(trimmed),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontSize = 13.sp,
                         lineHeight = 20.sp

@@ -2,32 +2,24 @@ package com.example.ui.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.ai.ConnectionTestResult
 import com.example.data.ai.GeminiService
 import com.example.util.ApiKeyManager
-import com.example.util.AppThemeStyle
-import com.example.util.ThemeManager
-import com.example.util.ThemeMode
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,18 +28,16 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var apiKey by remember { mutableStateOf(ApiKeyManager.getApiKey(context) ?: "") }
-    val currentThemeStyle by ThemeManager.currentTheme.collectAsStateWithLifecycle()
-    val currentThemeMode by ThemeManager.currentMode.collectAsStateWithLifecycle()
     var isTestingConnection by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<ConnectionTestResult?>(null) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Pengaturan Aplikasi & AI", fontWeight = FontWeight.Bold) },
+                title = { Text("Pengaturan Gemini AI", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -64,245 +54,69 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Section 0: Mode Layar (Terang / Gelap)
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(Icons.Default.SettingsBrightness, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Text(
-                                text = "Mode Warna Layar",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                            )
-                        }
-
-                        Text(
-                            text = "Pilih tampilan terang putih bersih atau mode gelap malam hari:",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            ThemeMode.values().forEach { mode ->
-                                val isModeSelected = currentThemeMode == mode
-                                OutlinedButton(
-                                    onClick = {
-                                        ThemeManager.setMode(context, mode)
-                                        val label = when(mode) {
-                                            ThemeMode.LIGHT -> "Mode Terang Aktif"
-                                            ThemeMode.DARK -> "Mode Gelap Aktif"
-                                            ThemeMode.SYSTEM -> "Mengikuti Pengaturan HP"
-                                        }
-                                        Toast.makeText(context, label, Toast.LENGTH_SHORT).show()
-                                    },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .testTag("btn_settings_mode_${mode.id}"),
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        containerColor = if (isModeSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                                        contentColor = if (isModeSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-                                    ),
-                                    border = androidx.compose.foundation.BorderStroke(
-                                        width = if (isModeSelected) 1.5.dp else 1.dp,
-                                        color = if (isModeSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                                    ),
-                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Icon(
-                                            imageVector = when(mode) {
-                                                ThemeMode.LIGHT -> Icons.Default.WbSunny
-                                                ThemeMode.DARK -> Icons.Default.NightsStay
-                                                ThemeMode.SYSTEM -> Icons.Default.SettingsBrightness
-                                            },
-                                            contentDescription = null,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = when(mode) {
-                                                ThemeMode.LIGHT -> "Terang"
-                                                ThemeMode.DARK -> "Gelap"
-                                                ThemeMode.SYSTEM -> "Ikuti HP"
-                                            },
-                                            fontSize = 11.sp,
-                                            fontWeight = if (isModeSelected) FontWeight.Bold else FontWeight.Normal
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Section 1: Template Tampilan UI
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(Icons.Default.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Text(
-                                text = "Tema & Gaya Desain UI",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                            )
-                        }
-
-                        Text(
-                            text = "Pilih kombinasi warna dan suasana visual aplikasi yang paling nyaman di mata Anda:",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        AppThemeStyle.values().forEach { themeOption ->
-                            val isSelected = currentThemeStyle == themeOption
-
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickable {
-                                        ThemeManager.setTheme(context, themeOption)
-                                        Toast.makeText(context, "Tema beralih ke: ${themeOption.title}", Toast.LENGTH_SHORT).show()
-                                    },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (isSelected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
-                                ),
-                                border = androidx.compose.foundation.BorderStroke(
-                                    width = if (isSelected) 2.dp else 1.dp,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                                )
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy((-6).dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(20.dp)
-                                                .clip(CircleShape)
-                                                .background(themeOption.primaryPreview)
-                                                .border(1.dp, Color.White, CircleShape)
-                                        )
-                                        Box(
-                                            modifier = Modifier
-                                                .size(20.dp)
-                                                .clip(CircleShape)
-                                                .background(themeOption.secondaryPreview)
-                                                .border(1.dp, Color.White, CircleShape)
-                                        )
-                                        Box(
-                                            modifier = Modifier
-                                                .size(20.dp)
-                                                .clip(CircleShape)
-                                                .background(themeOption.accentPreview)
-                                                .border(1.dp, Color.White, CircleShape)
-                                        )
-                                    }
-
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = themeOption.title,
-                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Text(
-                                            text = themeOption.subtitle,
-                                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-
-                                    RadioButton(
-                                        selected = isSelected,
-                                        onClick = {
-                                            ThemeManager.setTheme(context, themeOption)
-                                            Toast.makeText(context, "Tema beralih ke: ${themeOption.title}", Toast.LENGTH_SHORT).show()
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Section 2: Gemini API Key & Live Test
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(18.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Text(
-                                text = "Konfigurasi Gemini AI",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                            )
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            }
+                            Column {
+                                Text(
+                                    text = "Konfigurasi Google Gemini AI",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                                )
+                                Text(
+                                    text = "Konsultan Pedagogik & Generator Modul Online",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
 
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
                         Text(
-                            text = "Masukkan Google Gemini API Key Anda untuk menghubungkan fitur Konsultan AI dan pembuatan modul online secara real-time.",
-                            style = MaterialTheme.typography.bodySmall,
+                            text = "Masukkan Google Gemini API Key Anda untuk menghubungkan fitur konsultasi interaktif secara real-time dan analisis kurikulum mendalam.",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 18.sp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        
+
                         OutlinedTextField(
                             value = apiKey,
-                            onValueChange = { 
+                            onValueChange = {
                                 apiKey = it
                                 testResult = null
                             },
                             label = { Text("Gemini API Key") },
-                            placeholder = { Text("AIzaSy...") },
+                            placeholder = { Text("Contoh: AIzaSy... atau AQ....") },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                             trailingIcon = {
                                 if (apiKey.isNotEmpty()) {
-                                    IconButton(onClick = { 
+                                    IconButton(onClick = {
                                         apiKey = ""
                                         testResult = null
                                     }) {
@@ -312,7 +126,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                             }
                         )
 
-                        // API Key format hint
+                        // Format Hint if needed
                         if (apiKey.isNotBlank()) {
                             val clean = apiKey.trim()
                             val isRecognized = clean.startsWith("AQ.") || clean.startsWith("AIzaSy")
@@ -335,7 +149,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                                             modifier = Modifier.size(20.dp)
                                         )
                                         Text(
-                                            "Format Google AI Studio: Gemini API Key resmi diawali dengan 'AQ.' (kunci Auth baru) atau 'AIzaSy' (kunci lama).",
+                                            "Format Kunci: Google AI Studio biasanya berawalan 'AQ.' (kunci Auth baru) atau 'AIzaSy' (kunci lama) dengan panjang sekitar 39 karakter.",
                                             fontSize = 11.sp,
                                             color = Color(0xFF78350F),
                                             lineHeight = 15.sp
@@ -345,7 +159,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                             }
                         }
 
-                        // Status / Diagnostic card if tested
+                        // Test Result Diagnostic Badge
                         testResult?.let { res ->
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
@@ -377,16 +191,17 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                                     }
                                     if (res.modelUsed != null) {
                                         Text(
-                                            text = "Model Terhubung: ${res.modelUsed}",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Medium,
+                                            text = "Model Aktif: ${res.modelUsed}",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold,
                                             color = if (res.isSuccess) Color(0xFF166534) else Color(0xFF991B1B)
                                         )
                                     }
                                 }
                             }
                         }
-                        
+
+                        // Action Buttons
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -396,7 +211,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                                     val clean = apiKey.trim()
                                     ApiKeyManager.saveApiKey(context, clean)
                                     Toast.makeText(context, "API Key Disimpan!", Toast.LENGTH_SHORT).show()
-                                    
+
                                     // Trigger test immediately
                                     isTestingConnection = true
                                     testResult = null
@@ -421,7 +236,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                                 } else {
                                     Icon(Icons.Default.Bolt, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Simpan & Uji AI", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text("Simpan & Uji Koneksi AI", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 }
                             }
 
@@ -443,18 +258,21 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                             }
                         }
 
-                        // Guidance note
+                        // Step-by-step guidance
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(10.dp),
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text("💡 Panduan API Key Google AI Studio:", fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                                Text("1. Buka https://aistudio.google.com/ pada browser Anda.", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("2. Klik 'Get API Key' lalu buat kunci gratis baru.", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("3. Salin kunci (diawali 'AIzaSy...') dan tempelkan pada kolom di atas.", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("4. Aplikasi juga dapat beroperasi 100% secara offline tanpa API Key menggunakan Offline Engine Kurikulum Merdeka.", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary)
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("💡 Panduan Mendapatkan API Key Gratis:", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text("1. Kunjungi situs https://aistudio.google.com/ pada browser Anda.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("2. Masuk dengan Akun Google Anda, lalu klik tombol 'Get API key'.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("3. Buat kunci baru, salin teks kunci tersebut dan tempelkan pada kolom di atas.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("4. Klik 'Simpan & Uji Koneksi AI' untuk memverifikasi kesiapan AI.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                                Text("🛡️ Mode Offline Kurikulum Merdeka:", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                                Text("Aplikasi ini dapat digunakan 100% tanpa internet dan tanpa API Key dengan memanfaatkan Bank Data Kurikulum Merdeka bawaan.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -463,3 +281,4 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
         }
     }
 }
+
