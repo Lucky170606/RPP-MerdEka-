@@ -312,34 +312,30 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                             }
                         )
 
-                        // Real-time format warning
-                        if (apiKey.isNotBlank() && !apiKey.trim().startsWith("AIzaSy")) {
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = Color(0xFFFEF3C7),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B)),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(10.dp),
-                                    verticalAlignment = Alignment.Top,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        // API Key format hint
+                        if (apiKey.isNotBlank()) {
+                            val clean = apiKey.trim()
+                            val isRecognized = clean.startsWith("AQ.") || clean.startsWith("AIzaSy")
+                            if (!isRecognized && clean.length < 20) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color(0xFFFEF3C7),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B)),
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Icon(
-                                        Icons.Default.Warning,
-                                        contentDescription = null,
-                                        tint = Color(0xFFD97706),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Column {
-                                        Text(
-                                            "Perhatian Format Kunci:",
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 12.sp,
-                                            color = Color(0xFF92400E)
+                                    Row(
+                                        modifier = Modifier.padding(10.dp),
+                                        verticalAlignment = Alignment.Top,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Info,
+                                            contentDescription = null,
+                                            tint = Color(0xFFD97706),
+                                            modifier = Modifier.size(20.dp)
                                         )
                                         Text(
-                                            "Google Gemini API Key resmi dari Google AI Studio selalu diawali dengan 'AIzaSy...'.\n\nJika kunci diawali 'AQ.' atau teks URL, itu bukan API Key yang valid.",
+                                            "Format Google AI Studio: Gemini API Key resmi diawali dengan 'AQ.' (kunci Auth baru) atau 'AIzaSy' (kunci lama).",
                                             fontSize = 11.sp,
                                             color = Color(0xFF78350F),
                                             lineHeight = 15.sp

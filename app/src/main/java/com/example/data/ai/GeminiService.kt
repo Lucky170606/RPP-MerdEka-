@@ -24,9 +24,15 @@ data class ConnectionTestResult(
 
 object GeminiService {
     private const val TAG = "GeminiService"
-    private const val PRIMARY_MODEL = "gemini-2.5-flash"
-    private const val FALLBACK_MODEL_1 = "gemini-2.0-flash"
-    private const val FALLBACK_MODEL_2 = "gemini-1.5-flash"
+    
+    val SUPPORTED_MODELS = listOf(
+        "gemini-3.6-flash",
+        "gemini-3.5-flash",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
+        "gemini-flash"
+    )
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -49,10 +55,6 @@ object GeminiService {
             )
         }
 
-        if (!apiKey.startsWith("AIzaSy")) {
-            Log.w(TAG, "API Key does not start with AIzaSy: $apiKey")
-        }
-
         val testPayload = JSONObject().apply {
             val contentsArray = JSONArray().apply {
                 val contentObj = JSONObject().apply {
@@ -70,15 +72,18 @@ object GeminiService {
         }
 
         val requestBody = testPayload.toString().toRequestBody("application/json".toMediaType())
-        val modelsToTry = listOf(PRIMARY_MODEL, FALLBACK_MODEL_1, FALLBACK_MODEL_2)
 
         var lastHttpCode: Int? = null
-        var lastErrorBody: String? = null
+        var lastErrorDetail: String? = null
+        var lastModelAttempted: String? = null
 
-        for (model in modelsToTry) {
+        for (model in SUPPORTED_MODELS) {
+            lastModelAttempted = model
             try {
                 val request = Request.Builder()
                     .url("${getEndpoint(model)}?key=$apiKey")
+                    .header("x-goog-api-key", apiKey)
+                    .header("Content-Type", "application/json")
                     .post(requestBody)
                     .build()
 
@@ -103,45 +108,44 @@ object GeminiService {
                         detail = "Respons Server: $reply"
                     )
                 } else {
-                    lastErrorBody = bodyString
-                    if (response.code == 400 || response.code == 403) {
-                        var parsedMessage = "API Key tidak valid."
-                        if (!apiKey.startsWith("AIzaSy")) {
-                            parsedMessage = "Kunci salah: Google Gemini API Key resmi selalu diawali dengan 'AIzaSy...'. String yang dimasukkan ('${apiKey.take(8)}...') bukan API Key."
-                        } else {
-                            try {
-                                val errJson = JSONObject(bodyString).optJSONObject("error")
-                                val msg = errJson?.optString("message")
-                                if (!msg.isNullOrBlank()) {
-                                    parsedMessage = msg
-                                }
-                            } catch (_: Exception) {}
+                    var parsedMessage = "Kode HTTP ${response.code}"
+                    try {
+                        val errJson = JSONObject(bodyString).optJSONObject("error")
+                        val msg = errJson?.optString("message")
+                        if (!msg.isNullOrBlank()) {
+                            parsedMessage = msg
                         }
+                    } catch (_: Exception) {
+                        parsedMessage = bodyString.take(200)
+                    }
+                    lastErrorDetail = parsedMessage
 
+                    // If it's pure bad API Key (API_KEY_INVALID), terminate early
+                    if (response.code == 400 && (parsedMessage.contains("API_KEY_INVALID", ignoreCase = true) || parsedMessage.contains("API key not valid", ignoreCase = true))) {
                         return@withContext ConnectionTestResult(
                             isSuccess = false,
-                            message = if (response.code == 400) "API Key Tidak Valid (Error 400)" else "Akses Ditolak (Error 403)",
+                            message = "API Key Tidak Valid",
                             modelUsed = model,
                             httpCode = response.code,
                             detail = parsedMessage
                         )
                     }
+                    
+                    // For 404 (model retired/not available for user) or other 400s, continue testing next models
+                    Log.w(TAG, "Model $model returned HTTP ${response.code}: $parsedMessage, trying next fallback model...")
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Test failed on model $model: ${e.message}")
-                lastErrorBody = e.localizedMessage
+                lastErrorDetail = e.localizedMessage
             }
         }
 
         ConnectionTestResult(
             isSuccess = false,
             message = "Gagal terhubung ke Gemini API (Kode: $lastHttpCode).",
+            modelUsed = lastModelAttempted,
             httpCode = lastHttpCode,
-            detail = if (!apiKey.startsWith("AIzaSy")) {
-                "Kunci salah format. Gemini API Key resmi selalu diawali dengan 'AIzaSy...'. String yang dimasukkan ('${apiKey.take(8)}...') bukan API Key resmi."
-            } else {
-                lastErrorBody ?: "Periksa koneksi internet atau kuota Google AI Studio Anda."
-            }
+            detail = lastErrorDetail ?: "Periksa koneksi internet atau kuota Google AI Studio Anda."
         )
     }
 
@@ -244,12 +248,13 @@ object GeminiService {
             val requestBody = jsonRequest.toString().toRequestBody("application/json".toMediaType())
             
             var responseBody: String? = null
-            val models = listOf(PRIMARY_MODEL, FALLBACK_MODEL_1, FALLBACK_MODEL_2)
 
-            for (model in models) {
+            for (model in SUPPORTED_MODELS) {
                 try {
                     val request = Request.Builder()
                         .url("${getEndpoint(model)}?key=$apiKey")
+                        .header("x-goog-api-key", apiKey)
+                        .header("Content-Type", "application/json")
                         .post(requestBody)
                         .build()
 
@@ -408,12 +413,13 @@ object GeminiService {
             }
 
             val requestBody = jsonRequest.toString().toRequestBody("application/json".toMediaType())
-            val models = listOf(PRIMARY_MODEL, FALLBACK_MODEL_1, FALLBACK_MODEL_2)
 
-            for (model in models) {
+            for (model in SUPPORTED_MODELS) {
                 try {
                     val request = Request.Builder()
                         .url("${getEndpoint(model)}?key=$apiKey")
+                        .header("x-goog-api-key", apiKey)
+                        .header("Content-Type", "application/json")
                         .post(requestBody)
                         .build()
 
@@ -468,13 +474,14 @@ object GeminiService {
         }
 
         val requestBody = jsonRequest.toString().toRequestBody("application/json".toMediaType())
-        val models = listOf(PRIMARY_MODEL, FALLBACK_MODEL_1, FALLBACK_MODEL_2)
 
         var lastException: Exception? = null
-        for (model in models) {
+        for (model in SUPPORTED_MODELS) {
             try {
                 val request = Request.Builder()
                     .url("${getEndpoint(model)}?key=$apiKey")
+                    .header("x-goog-api-key", apiKey)
+                    .header("Content-Type", "application/json")
                     .post(requestBody)
                     .build()
 
