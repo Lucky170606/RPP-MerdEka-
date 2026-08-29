@@ -16,8 +16,10 @@ import java.util.concurrent.TimeUnit
 
 object GeminiService {
     private const val TAG = "GeminiService"
-    private const val MODEL_NAME = "gemini-3.5-flash"
+    private const val MODEL_NAME = "gemini-2.5-flash"
+    private const val FALLBACK_MODEL = "gemini-2.0-flash"
     private const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/$MODEL_NAME:generateContent"
+    private const val FALLBACK_URL = "https://generativelanguage.googleapis.com/v1beta/models/$FALLBACK_MODEL:generateContent"
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(60, TimeUnit.SECONDS)
@@ -301,13 +303,13 @@ object GeminiService {
 
     fun isAvailable(context: Context): Boolean {
         val key = ApiKeyManager.getApiKey(context)
-        return !key.isNullOrBlank()
+        return !key.isNullOrBlank() && com.example.util.NetworkUtils.isInternetAvailable(context)
     }
 
     suspend fun generateText(context: Context, promptText: String): String = withContext(Dispatchers.IO) {
         val apiKey = ApiKeyManager.getApiKey(context)
-        if (apiKey.isNullOrBlank()) {
-            return@withContext "Layanan AI siap pakai secara lokal."
+        if (apiKey.isNullOrBlank() || !com.example.util.NetworkUtils.isInternetAvailable(context)) {
+            throw java.io.IOException("Offline mode active")
         }
 
         try {
@@ -328,25 +330,37 @@ object GeminiService {
             }
 
             val requestBody = jsonRequest.toString().toRequestBody("application/json".toMediaType())
-            val request = Request.Builder()
+            
+            // Try Primary Model
+            var request = Request.Builder()
                 .url("$BASE_URL?key=$apiKey")
                 .post(requestBody)
                 .build()
 
-            val response = client.newCall(request).execute()
-            val responseBody = response.body?.string() ?: ""
+            var response = client.newCall(request).execute()
+            var responseBody = response.body?.string() ?: ""
+
+            // Fallback Model if primary fails
+            if (!response.isSuccessful) {
+                request = Request.Builder()
+                    .url("$FALLBACK_URL?key=$apiKey")
+                    .post(requestBody)
+                    .build()
+                response = client.newCall(request).execute()
+                responseBody = response.body?.string() ?: ""
+            }
 
             if (!response.isSuccessful) {
-                return@withContext "Koneksi AI online tidak tersedia, beralih ke engine konsultasi cerdas terintegrasi."
+                throw java.io.IOException("AI API response failed: ${response.code}")
             }
 
             val parsedJson = JSONObject(responseBody)
             val candidates = parsedJson.optJSONArray("candidates")
             val textOutput = candidates?.optJSONObject(0)?.optJSONObject("content")?.optJSONArray("parts")?.optJSONObject(0)?.optString("text")
-            textOutput?.trim() ?: "Tanggapan telah diproses."
+            textOutput?.trim() ?: throw java.io.IOException("Empty AI response")
         } catch (e: Exception) {
             Log.e(TAG, "generateText error", e)
-            "Rekomendasi pedagogis tersimpan dalam bank pengetahuan lokal."
+            throw e
         }
     }
 }

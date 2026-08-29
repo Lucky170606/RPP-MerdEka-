@@ -78,7 +78,12 @@ fun PedagogicalConsultantScreen(
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
-    val isGeminiConnected = GeminiService.isAvailable(context)
+    var isOnlineActive by remember { mutableStateOf(GeminiService.isAvailable(context)) }
+
+    // Recheck connectivity on enter
+    LaunchedEffect(Unit) {
+        isOnlineActive = GeminiService.isAvailable(context)
+    }
 
     val starterCards = listOf(
         QuickPromptCategory(
@@ -132,8 +137,13 @@ fun PedagogicalConsultantScreen(
             if (messages.isNotEmpty()) {
                 listState.animateScrollToItem(messages.size - 1)
             }
-            val answer = try {
-                if (GeminiService.isAvailable(context)) {
+            
+            // Check real-time connectivity
+            val currentlyOnline = GeminiService.isAvailable(context)
+            isOnlineActive = currentlyOnline
+
+            val answer = if (currentlyOnline) {
+                try {
                     val aiPrompt = """
                         Sebagai konsultan ahli Kurikulum Merdeka Kemendikbudristek, berikan panduan praktis, terstruktur, dan aplikatif untuk pertanyaan guru berikut:
                         $trimmed
@@ -144,11 +154,12 @@ fun PedagogicalConsultantScreen(
                         - Gunakan format teks rapi dan hindari rumus LaTeX.
                     """.trimIndent()
                     GeminiService.generateText(context, aiPrompt)
-                } else {
+                } catch (e: Exception) {
+                    isOnlineActive = false
+                    snackbarHostState.showSnackbar("Koneksi internet tidak stabil, beralih ke engine offline.")
                     PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
                 }
-            } catch (e: Exception) {
-                snackbarHostState.showSnackbar("Koneksi Gemini dialihkan ke engine offline.")
+            } else {
                 PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
             }
 
@@ -215,13 +226,13 @@ fun PedagogicalConsultantScreen(
                                 modifier = Modifier
                                     .size(7.dp)
                                     .clip(CircleShape)
-                                    .background(if (isGeminiConnected) EduGreen600 else EduAmber600)
+                                    .background(if (isOnlineActive) EduGreen600 else EduAmber600)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (isGeminiConnected) "Gemini AI Aktif" else "Mode Pengetahuan Offline",
+                                text = if (isOnlineActive) "Gemini AI Aktif" else "Mode Pengetahuan Offline",
                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Medium),
-                                color = if (isGeminiConnected) EduGreen600 else MaterialTheme.colorScheme.onSurfaceVariant
+                                color = if (isOnlineActive) EduGreen600 else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
