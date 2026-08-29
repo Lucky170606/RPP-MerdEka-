@@ -10,6 +10,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import com.example.util.AppThemeStyle
 
 private val DarkColorScheme = darkColorScheme(
     primary = Color(0xFF93C5FD),
@@ -57,6 +58,7 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun MyApplicationTheme(
+    themeStyle: AppThemeStyle = AppThemeStyle.MODERN_EDU,
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false, // Keep distinct custom theme by default
     content: @Composable () -> Unit
@@ -66,8 +68,8 @@ fun MyApplicationTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+        darkTheme -> themeStyle.darkScheme()
+        else -> themeStyle.lightScheme()
     }
 
     MaterialTheme(

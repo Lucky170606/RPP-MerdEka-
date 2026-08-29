@@ -1,9 +1,9 @@
 package com.example.data.ai
 
-import android.util.Log
 import android.content.Context
-import com.example.util.ApiKeyManager
+import android.util.Log
 import com.example.data.model.GeneratedModulContent
+import com.example.util.ApiKeyManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -14,18 +14,126 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
+data class ConnectionTestResult(
+    val isSuccess: Boolean,
+    val message: String,
+    val modelUsed: String? = null,
+    val httpCode: Int? = null,
+    val detail: String? = null
+)
+
 object GeminiService {
     private const val TAG = "GeminiService"
-    private const val MODEL_NAME = "gemini-2.5-flash"
-    private const val FALLBACK_MODEL = "gemini-2.0-flash"
-    private const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/$MODEL_NAME:generateContent"
-    private const val FALLBACK_URL = "https://generativelanguage.googleapis.com/v1beta/models/$FALLBACK_MODEL:generateContent"
+    private const val PRIMARY_MODEL = "gemini-3.5-flash"
+    private const val FALLBACK_MODEL_1 = "gemini-2.5-flash"
+    private const val FALLBACK_MODEL_2 = "gemini-flash-latest"
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(60, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(60, TimeUnit.SECONDS)
         .build()
+
+    private fun getEndpoint(model: String): String {
+        return "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent"
+    }
+
+    suspend fun testConnection(context: Context, customKey: String? = null): ConnectionTestResult = withContext(Dispatchers.IO) {
+        val apiKey = customKey?.trim()?.takeIf { it.isNotBlank() } ?: ApiKeyManager.getApiKey(context)
+
+        if (apiKey.isNullOrBlank()) {
+            return@withContext ConnectionTestResult(
+                isSuccess = false,
+                message = "API Key belum diisi. Silakan masukkan Gemini API Key Anda.",
+                detail = "Dapatkan API Key gratis di https://aistudio.google.com/"
+            )
+        }
+
+        val testPayload = JSONObject().apply {
+            val contentsArray = JSONArray().apply {
+                val contentObj = JSONObject().apply {
+                    val partsArray = JSONArray().apply {
+                        val partObj = JSONObject().apply {
+                            put("text", "Halo! Berikan respons 1 kata: 'Koneksi Sukses'.")
+                        }
+                        put(partObj)
+                    }
+                    put("parts", partsArray)
+                }
+                put(contentObj)
+            }
+            put("contents", contentsArray)
+        }
+
+        val requestBody = testPayload.toString().toRequestBody("application/json".toMediaType())
+        val modelsToTry = listOf(PRIMARY_MODEL, FALLBACK_MODEL_1, FALLBACK_MODEL_2)
+
+        var lastHttpCode: Int? = null
+        var lastErrorBody: String? = null
+
+        for (model in modelsToTry) {
+            try {
+                val request = Request.Builder()
+                    .url("${getEndpoint(model)}?key=$apiKey")
+                    .post(requestBody)
+                    .build()
+
+                val response = client.newCall(request).execute()
+                lastHttpCode = response.code
+                val bodyString = response.body?.string() ?: ""
+
+                if (response.isSuccessful) {
+                    val json = JSONObject(bodyString)
+                    val reply = json.optJSONArray("candidates")
+                        ?.optJSONObject(0)
+                        ?.optJSONObject("content")
+                        ?.optJSONArray("parts")
+                        ?.optJSONObject(0)
+                        ?.optString("text")?.trim() ?: "Terkoneksi"
+
+                    return@withContext ConnectionTestResult(
+                        isSuccess = true,
+                        message = "Koneksi Berhasil! Gemini AI Aktif.",
+                        modelUsed = model,
+                        httpCode = response.code,
+                        detail = "Respons: $reply"
+                    )
+                } else {
+                    lastErrorBody = bodyString
+                    // If error is 400 (Bad API Key) or 403 (Permission denied), no need to try other models
+                    if (response.code == 400 || response.code == 403) {
+                        var parsedMessage = "API Key tidak valid atau pembatasan kuota/projek Google Cloud."
+                        try {
+                            val errJson = JSONObject(bodyString).optJSONObject("error")
+                            val msg = errJson?.optString("message")
+                            val status = errJson?.optString("status")
+                            if (!msg.isNullOrBlank()) {
+                                parsedMessage = "$msg (Status: $status)"
+                            }
+                        } catch (_: Exception) {}
+
+                        return@withContext ConnectionTestResult(
+                            isSuccess = false,
+                            message = if (response.code == 400) "API Key Tidak Valid (Error 400)" else "Akses Ditolak (Error 403)",
+                            modelUsed = model,
+                            httpCode = response.code,
+                            detail = parsedMessage
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Test failed on model $model: ${e.message}")
+                lastErrorBody = e.localizedMessage
+            }
+        }
+
+        ConnectionTestResult(
+            isSuccess = false,
+            message = "Gagal terhubung ke Gemini API (Kode: $lastHttpCode).",
+            httpCode = lastHttpCode,
+            detail = lastErrorBody ?: "Periksa koneksi internet atau format API Key."
+        )
+    }
 
     suspend fun generateModulAjarAI(
         context: Context,
@@ -124,17 +232,30 @@ object GeminiService {
             }
 
             val requestBody = jsonRequest.toString().toRequestBody("application/json".toMediaType())
-            val request = Request.Builder()
-                .url("$BASE_URL?key=$apiKey")
-                .post(requestBody)
-                .build()
+            
+            var responseBody: String? = null
+            val models = listOf(PRIMARY_MODEL, FALLBACK_MODEL_1, FALLBACK_MODEL_2)
 
-            val response = client.newCall(request).execute()
-            val responseBody = response.body?.string() ?: ""
+            for (model in models) {
+                try {
+                    val request = Request.Builder()
+                        .url("${getEndpoint(model)}?key=$apiKey")
+                        .post(requestBody)
+                        .build()
 
-            if (!response.isSuccessful) {
-                Log.e(TAG, "API call failed with code ${response.code}: $responseBody")
-                // Fallback gracefully so user experience is never broken
+                    val response = client.newCall(request).execute()
+                    val body = response.body?.string() ?: ""
+                    if (response.isSuccessful && body.isNotBlank()) {
+                        responseBody = body
+                        break
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Model $model attempt failed: ${e.message}")
+                }
+            }
+
+            if (responseBody == null) {
+                Log.e(TAG, "All models failed, falling back to offline engine")
                 val offlineResult = OfflineCurriculumEngine.generateCompleteModul(
                     teacherName, schoolName, fase, grade, subject, topic, timeAllocation,
                     semester, academicYear, modelName, selectedDimensi, targetGayaBelajar,
@@ -205,7 +326,6 @@ object GeminiService {
     ): Result<String> = withContext(Dispatchers.IO) {
         val apiKey = ApiKeyManager.getApiKey(context)
         if (apiKey.isNullOrBlank()) {
-            // Intelligent local section enhancer
             val enhanced = when {
                 instruction.contains("soal", ignoreCase = true) || instruction.contains("asesmen", ignoreCase = true) -> {
                     """
@@ -278,23 +398,32 @@ object GeminiService {
             }
 
             val requestBody = jsonRequest.toString().toRequestBody("application/json".toMediaType())
-            val request = Request.Builder()
-                .url("$BASE_URL?key=$apiKey")
-                .post(requestBody)
-                .build()
+            val models = listOf(PRIMARY_MODEL, FALLBACK_MODEL_1, FALLBACK_MODEL_2)
 
-            val response = client.newCall(request).execute()
-            val responseBody = response.body?.string() ?: ""
+            for (model in models) {
+                try {
+                    val request = Request.Builder()
+                        .url("${getEndpoint(model)}?key=$apiKey")
+                        .post(requestBody)
+                        .build()
 
-            if (!response.isSuccessful) {
-                return@withContext Result.success("$currentContent\n\n[Diperbarui]: Dilengkapi strategi tambahan sesuai instruksi $instruction")
+                    val response = client.newCall(request).execute()
+                    val responseBody = response.body?.string() ?: ""
+
+                    if (response.isSuccessful && responseBody.isNotBlank()) {
+                        val parsedJson = JSONObject(responseBody)
+                        val candidates = parsedJson.optJSONArray("candidates")
+                        val textOutput = candidates?.optJSONObject(0)?.optJSONObject("content")?.optJSONArray("parts")?.optJSONObject(0)?.optString("text")
+                        if (!textOutput.isNullOrBlank()) {
+                            return@withContext Result.success(textOutput.trim())
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Improve section with $model failed: ${e.message}")
+                }
             }
 
-            val parsedJson = JSONObject(responseBody)
-            val candidates = parsedJson.optJSONArray("candidates")
-            val textOutput = candidates?.optJSONObject(0)?.optJSONObject("content")?.optJSONArray("parts")?.optJSONObject(0)?.optString("text") ?: currentContent
-
-            Result.success(textOutput.trim())
+            Result.success("$currentContent\n\n[Diperbarui]: Dilengkapi strategi tambahan sesuai instruksi $instruction")
         } catch (e: Exception) {
             Log.e(TAG, "Section AI refinement error", e)
             Result.success("$currentContent\n\n[Penyempurnaan]: Telah disesuaikan dengan instruksi: $instruction")
@@ -303,64 +432,61 @@ object GeminiService {
 
     fun isAvailable(context: Context): Boolean {
         val key = ApiKeyManager.getApiKey(context)
-        return !key.isNullOrBlank() && com.example.util.NetworkUtils.isInternetAvailable(context)
+        return !key.isNullOrBlank()
     }
 
     suspend fun generateText(context: Context, promptText: String): String = withContext(Dispatchers.IO) {
         val apiKey = ApiKeyManager.getApiKey(context)
-        if (apiKey.isNullOrBlank() || !com.example.util.NetworkUtils.isInternetAvailable(context)) {
-            throw java.io.IOException("Offline mode active")
+        if (apiKey.isNullOrBlank()) {
+            throw java.io.IOException("API Key belum terpasang.")
         }
 
-        try {
-            val jsonRequest = JSONObject().apply {
-                val contentsArray = JSONArray().apply {
-                    val contentObj = JSONObject().apply {
-                        val partsArray = JSONArray().apply {
-                            val partObj = JSONObject().apply {
-                                put("text", promptText)
-                            }
-                            put(partObj)
+        val jsonRequest = JSONObject().apply {
+            val contentsArray = JSONArray().apply {
+                val contentObj = JSONObject().apply {
+                    val partsArray = JSONArray().apply {
+                        val partObj = JSONObject().apply {
+                            put("text", promptText)
                         }
-                        put("parts", partsArray)
+                        put(partObj)
                     }
-                    put(contentObj)
+                    put("parts", partsArray)
                 }
-                put("contents", contentsArray)
+                put(contentObj)
             }
+            put("contents", contentsArray)
+        }
 
-            val requestBody = jsonRequest.toString().toRequestBody("application/json".toMediaType())
-            
-            // Try Primary Model
-            var request = Request.Builder()
-                .url("$BASE_URL?key=$apiKey")
-                .post(requestBody)
-                .build()
+        val requestBody = jsonRequest.toString().toRequestBody("application/json".toMediaType())
+        val models = listOf(PRIMARY_MODEL, FALLBACK_MODEL_1, FALLBACK_MODEL_2)
 
-            var response = client.newCall(request).execute()
-            var responseBody = response.body?.string() ?: ""
-
-            // Fallback Model if primary fails
-            if (!response.isSuccessful) {
-                request = Request.Builder()
-                    .url("$FALLBACK_URL?key=$apiKey")
+        var lastException: Exception? = null
+        for (model in models) {
+            try {
+                val request = Request.Builder()
+                    .url("${getEndpoint(model)}?key=$apiKey")
                     .post(requestBody)
                     .build()
-                response = client.newCall(request).execute()
-                responseBody = response.body?.string() ?: ""
-            }
 
-            if (!response.isSuccessful) {
-                throw java.io.IOException("AI API response failed: ${response.code}")
-            }
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string() ?: ""
 
-            val parsedJson = JSONObject(responseBody)
-            val candidates = parsedJson.optJSONArray("candidates")
-            val textOutput = candidates?.optJSONObject(0)?.optJSONObject("content")?.optJSONArray("parts")?.optJSONObject(0)?.optString("text")
-            textOutput?.trim() ?: throw java.io.IOException("Empty AI response")
-        } catch (e: Exception) {
-            Log.e(TAG, "generateText error", e)
-            throw e
+                if (response.isSuccessful && responseBody.isNotBlank()) {
+                    val parsedJson = JSONObject(responseBody)
+                    val candidates = parsedJson.optJSONArray("candidates")
+                    val textOutput = candidates?.optJSONObject(0)?.optJSONObject("content")?.optJSONArray("parts")?.optJSONObject(0)?.optString("text")
+                    if (!textOutput.isNullOrBlank()) {
+                        return@withContext textOutput.trim()
+                    }
+                } else {
+                    lastException = java.io.IOException("HTTP ${response.code}: $responseBody")
+                }
+            } catch (e: Exception) {
+                lastException = e
+            }
         }
+
+        throw lastException ?: java.io.IOException("Gagal menghubungi model Gemini")
     }
 }
+

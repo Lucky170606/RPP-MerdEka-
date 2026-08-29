@@ -27,18 +27,34 @@ import com.example.ui.screens.RaporKktpScreen
 import com.example.ui.screens.ReferenceDatabaseScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.TeacherProfileScreen
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.ModulViewModel
 import com.example.ui.viewmodel.Screen
+import com.example.util.ThemeManager
+import com.example.util.ThemeMode
 
 class MainActivity : ComponentActivity() {
     private val viewModel: ModulViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ThemeManager.init(this)
         enableEdgeToEdge()
         setContent {
-            MyApplicationTheme {
+            val currentThemeStyle by ThemeManager.currentTheme.collectAsStateWithLifecycle()
+            val currentThemeMode by ThemeManager.currentMode.collectAsStateWithLifecycle()
+            val isSystemDark = isSystemInDarkTheme()
+            val isDark = when (currentThemeMode) {
+                ThemeMode.SYSTEM -> isSystemDark
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
+
+            MyApplicationTheme(
+                themeStyle = currentThemeStyle,
+                darkTheme = isDark
+            ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val currentScreen by viewModel.currentScreen.collectAsStateWithLifecycle()
 

@@ -595,7 +595,10 @@ fun HeroBannerCard(
                 .fillMaxWidth()
                 .background(
                     Brush.horizontalGradient(
-                        colors = listOf(EduNavy900, EduNavy700)
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.secondary
+                        )
                     )
                 )
                 .padding(20.dp)
@@ -639,8 +642,8 @@ fun HeroBannerCard(
                     Button(
                         onClick = onCreateClick,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = EduAmber600,
-                            contentColor = Color.White
+                            containerColor = MaterialTheme.colorScheme.tertiary,
+                            contentColor = MaterialTheme.colorScheme.onTertiary
                         ),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.testTag("btn_hero_create")

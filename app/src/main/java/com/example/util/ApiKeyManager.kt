@@ -1,36 +1,79 @@
 package com.example.util
 
 import android.content.Context
+import android.content.SharedPreferences
+import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
 object ApiKeyManager {
+    private const val TAG = "ApiKeyManager"
     private const val PREF_NAME = "secure_prefs"
+    private const val FALLBACK_PREF_NAME = "app_api_key_prefs"
     private const val KEY_API_KEY = "gemini_api_key"
 
-    fun getEncryptedPrefs(context: Context): EncryptedSharedPreferences {
-        val masterKey = MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
+    private fun getSharedPreferences(context: Context): SharedPreferences {
+        return try {
+            val masterKey = MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
 
-        return EncryptedSharedPreferences.create(
-            context,
-            PREF_NAME,
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        ) as EncryptedSharedPreferences
+            EncryptedSharedPreferences.create(
+                context,
+                PREF_NAME,
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "EncryptedSharedPreferences failed, falling back to standard SharedPreferences: ${e.message}")
+            context.getSharedPreferences(FALLBACK_PREF_NAME, Context.MODE_PRIVATE)
+        }
     }
 
     fun saveApiKey(context: Context, apiKey: String) {
-        val prefs = getEncryptedPrefs(context)
-        prefs.edit().putString(KEY_API_KEY, apiKey).apply()
+        val cleanKey = apiKey.trim()
+        val prefs = getSharedPreferences(context)
+        prefs.edit().putString(KEY_API_KEY, cleanKey).apply()
+
+        // Also save to standard fallback in case encrypted prefs fail on next boot
+        try {
+            val fallbackPrefs = context.getSharedPreferences(FALLBACK_PREF_NAME, Context.MODE_PRIVATE)
+            fallbackPrefs.edit().putString(KEY_API_KEY, cleanKey).apply()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error saving fallback prefs", e)
+        }
+    }
+
+    fun clearApiKey(context: Context) {
+        try {
+            getSharedPreferences(context).edit().remove(KEY_API_KEY).apply()
+        } catch (_: Exception) {}
+        try {
+            context.getSharedPreferences(FALLBACK_PREF_NAME, Context.MODE_PRIVATE).edit().remove(KEY_API_KEY).apply()
+        } catch (_: Exception) {}
     }
 
     fun getApiKey(context: Context): String? {
-        val prefs = getEncryptedPrefs(context)
-        val userKey = prefs.getString(KEY_API_KEY, null)
-        if (!userKey.isNullOrBlank()) return userKey.trim()
+        val userKey = try {
+            val primary = getSharedPreferences(context).getString(KEY_API_KEY, null)
+            if (!primary.isNullOrBlank()) primary else {
+                context.getSharedPreferences(FALLBACK_PREF_NAME, Context.MODE_PRIVATE).getString(KEY_API_KEY, null)
+            }
+        } catch (e: Exception) {
+            try {
+                context.getSharedPreferences(FALLBACK_PREF_NAME, Context.MODE_PRIVATE).getString(KEY_API_KEY, null)
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        if (!userKey.isNullOrBlank()) {
+            val trimmed = userKey.trim()
+            if (trimmed.isNotBlank() && trimmed != "DEFAULT_API_KEY") {
+                return trimmed
+            }
+        }
 
         // Fallback to BuildConfig injected from Secrets (.env)
         val buildKey = try {

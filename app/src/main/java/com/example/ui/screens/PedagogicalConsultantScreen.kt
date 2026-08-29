@@ -155,18 +155,16 @@ fun PedagogicalConsultantScreen(
                         - Gunakan format teks rapi dan hindari rumus LaTeX.
                     """.trimIndent()
 
-                    val result = withTimeoutOrNull(6000L) {
+                    val result = withTimeoutOrNull(60000L) {
                         GeminiService.generateText(context, aiPrompt)
                     }
 
                     if (result.isNullOrBlank()) {
-                        isOnlineActive = false
                         PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
                     } else {
                         result
                     }
                 } catch (e: Exception) {
-                    isOnlineActive = false
                     PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
                 }
             } else {
@@ -225,7 +223,11 @@ fun PedagogicalConsultantScreen(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { viewModel.navigateTo(Screen.Settings) }
+                    ) {
                         Text(
                             text = "Ruang Konsultasi Guru AI",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
@@ -240,11 +242,19 @@ fun PedagogicalConsultantScreen(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (isOnlineActive) "Gemini AI Aktif" else "Mode Pengetahuan Offline",
+                                text = if (isOnlineActive) "Gemini AI Terhubung" else "Mode Offline (Klik utk Atur API Key)",
                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Medium),
                                 color = if (isOnlineActive) EduGreen600 else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    }
+
+                    IconButton(onClick = { viewModel.navigateTo(Screen.Settings) }) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Pengaturan API Key",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))

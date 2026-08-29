@@ -9,15 +9,15 @@ object NetworkUtils {
         return try {
             val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
             if (connectivityManager != null) {
-                val activeNetwork = connectivityManager.activeNetwork ?: return false
-                val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
-                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                        capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                val activeNetwork = connectivityManager.activeNetwork ?: return true
+                val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return true
+                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             } else {
-                false
+                true
             }
         } catch (e: Exception) {
-            false
+            true // Allow requests to proceed to real network call
         }
     }
 }
+

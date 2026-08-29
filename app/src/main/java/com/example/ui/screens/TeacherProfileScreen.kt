@@ -5,11 +5,14 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -17,17 +20,23 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.TeacherProfile
 import com.example.ui.components.AppHeader
 import com.example.ui.components.SectionHeader
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.ModulViewModel
 import com.example.ui.viewmodel.Screen
+import com.example.util.AppThemeStyle
+import com.example.util.ThemeManager
+import com.example.util.ThemeMode
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -53,8 +62,11 @@ fun TeacherProfileScreen(
     var defaultSemester by remember { mutableStateOf(profile.defaultSemester) }
     var selectedLayoutMode by remember { mutableStateOf(profile.printLayoutMode) } // STANDAR, RINGKAS
 
+    val currentThemeStyle by ThemeManager.currentTheme.collectAsStateWithLifecycle()
+    val currentThemeMode by ThemeManager.currentMode.collectAsStateWithLifecycle()
+
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Profil & Sekolah", "Pengaturan AI", "Format Cetak", "Cadangan & Pemulihan", "Panduan & Info")
+    val tabs = listOf("Profil & Sekolah", "Tema Tampilan", "Pengaturan AI", "Format Cetak", "Cadangan & Pemulihan", "Panduan & Info")
     val pagerState = rememberPagerState(pageCount = { tabs.size })
 
     val coroutineScope = rememberCoroutineScope()
@@ -155,9 +167,10 @@ fun TeacherProfileScreen(
                             icon = {
                                 when (index) {
                                     0 -> Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    1 -> Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    2 -> Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    3 -> Icon(Icons.Default.Backup, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    1 -> Icon(Icons.Default.Palette, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    2 -> Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    3 -> Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    4 -> Icon(Icons.Default.Backup, contentDescription = null, modifier = Modifier.size(18.dp))
                                     else -> Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(18.dp))
                                 }
                             }
@@ -293,7 +306,248 @@ fun TeacherProfileScreen(
                     }
 
                     1 -> {
-                        // TAB 1: Pengaturan AI
+                        // TAB 1: Tema Tampilan
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            item {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Palette,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                        Column {
+                                            Text(
+                                                "Personalisasi Desain UI",
+                                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Text(
+                                                "Pilih template gaya tampilan aplikasi sesuai kenyamanan visual saat menyusun perangkat ajar.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                lineHeight = 16.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Mode Terang / Gelap Selector
+                            item {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(14.dp),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = if (currentThemeMode == ThemeMode.LIGHT) Icons.Default.WbSunny else if (currentThemeMode == ThemeMode.DARK) Icons.Default.NightsStay else Icons.Default.SettingsBrightness,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                            Text(
+                                                "Mode Warna Layar",
+                                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            ThemeMode.values().forEach { mode ->
+                                                val isModeSelected = currentThemeMode == mode
+                                                OutlinedButton(
+                                                    onClick = {
+                                                        ThemeManager.setMode(context, mode)
+                                                        val label = when(mode) {
+                                                            ThemeMode.LIGHT -> "Mode Terang Aktif"
+                                                            ThemeMode.DARK -> "Mode Gelap Aktif"
+                                                            ThemeMode.SYSTEM -> "Mengikuti Pengaturan HP"
+                                                        }
+                                                        Toast.makeText(context, label, Toast.LENGTH_SHORT).show()
+                                                    },
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .testTag("btn_mode_${mode.id}"),
+                                                    shape = RoundedCornerShape(10.dp),
+                                                    colors = ButtonDefaults.outlinedButtonColors(
+                                                        containerColor = if (isModeSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                                                        contentColor = if (isModeSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                                                    ),
+                                                    border = androidx.compose.foundation.BorderStroke(
+                                                        width = if (isModeSelected) 1.5.dp else 1.dp,
+                                                        color = if (isModeSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                                                    ),
+                                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                                                ) {
+                                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                        Icon(
+                                                            imageVector = when(mode) {
+                                                                ThemeMode.LIGHT -> Icons.Default.WbSunny
+                                                                ThemeMode.DARK -> Icons.Default.NightsStay
+                                                                ThemeMode.SYSTEM -> Icons.Default.SettingsBrightness
+                                                            },
+                                                            contentDescription = null,
+                                                            modifier = Modifier.size(18.dp)
+                                                        )
+                                                        Spacer(modifier = Modifier.height(4.dp))
+                                                        Text(
+                                                            text = when(mode) {
+                                                                ThemeMode.LIGHT -> "Terang"
+                                                                ThemeMode.DARK -> "Gelap"
+                                                                ThemeMode.SYSTEM -> "Ikuti HP"
+                                                            },
+                                                            fontSize = 11.sp,
+                                                            fontWeight = if (isModeSelected) FontWeight.Bold else FontWeight.Normal
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            item {
+                                Text(
+                                    "Pilihan Template Desain & Warna:",
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                )
+                            }
+
+                            items(AppThemeStyle.values().size) { idx ->
+                                val themeOption = AppThemeStyle.values()[idx]
+                                val isSelected = currentThemeStyle == themeOption
+
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .clickable {
+                                            ThemeManager.setTheme(context, themeOption)
+                                            Toast.makeText(context, "Tema beralih ke: ${themeOption.title}", Toast.LENGTH_SHORT).show()
+                                        }
+                                        .testTag("theme_option_${themeOption.id}"),
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (isSelected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        width = if (isSelected) 2.dp else 1.dp,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                                    )
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                    ) {
+                                        // Color swatches preview
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy((-6).dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .clip(CircleShape)
+                                                    .background(themeOption.primaryPreview)
+                                                    .border(1.5.dp, Color.White, CircleShape)
+                                            )
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .clip(CircleShape)
+                                                    .background(themeOption.secondaryPreview)
+                                                    .border(1.5.dp, Color.White, CircleShape)
+                                            )
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .clip(CircleShape)
+                                                    .background(themeOption.accentPreview)
+                                                    .border(1.5.dp, Color.White, CircleShape)
+                                            )
+                                        }
+
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                Text(
+                                                    text = themeOption.title,
+                                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                if (isSelected) {
+                                                    Surface(
+                                                        color = MaterialTheme.colorScheme.primary,
+                                                        shape = RoundedCornerShape(4.dp)
+                                                    ) {
+                                                        Text(
+                                                            "Aktif",
+                                                            color = MaterialTheme.colorScheme.onPrimary,
+                                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
+                                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = themeOption.subtitle,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+
+                                        RadioButton(
+                                            selected = isSelected,
+                                            onClick = {
+                                                ThemeManager.setTheme(context, themeOption)
+                                                Toast.makeText(context, "Tema beralih ke: ${themeOption.title}", Toast.LENGTH_SHORT).show()
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            item {
+                                Spacer(modifier = Modifier.height(20.dp))
+                            }
+                        }
+                    }
+
+                    2 -> {
+                        // TAB 2: Pengaturan AI
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(12.dp),
@@ -342,8 +596,8 @@ fun TeacherProfileScreen(
                             }
                         }
                     }
-                    2 -> {
-                        // TAB 2: Format Cetak
+                    3 -> {
+                        // TAB 3: Format Cetak
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(12.dp),
@@ -416,8 +670,8 @@ fun TeacherProfileScreen(
                         }
                     }
 
-                    3 -> {
-                        // TAB 3: Cadangan & Pemulihan (Backup & Restore)
+                    4 -> {
+                        // TAB 4: Cadangan & Pemulihan (Backup & Restore)
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(12.dp),
@@ -487,8 +741,8 @@ fun TeacherProfileScreen(
                         }
                     }
 
-                    4 -> {
-                        // TAB 4: Panduan & Info
+                    5 -> {
+                        // TAB 5: Panduan & Info
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(12.dp),
