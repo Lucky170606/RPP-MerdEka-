@@ -44,6 +44,7 @@ import com.example.ui.theme.*
 import com.example.ui.viewmodel.ModulViewModel
 import com.example.ui.viewmodel.Screen
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 data class QuickPromptCategory(
     val icon: ImageVector,
@@ -138,7 +139,7 @@ fun PedagogicalConsultantScreen(
                 listState.animateScrollToItem(messages.size - 1)
             }
             
-            // Check real-time connectivity
+            // Check real-time connectivity & API Key
             val currentlyOnline = GeminiService.isAvailable(context)
             isOnlineActive = currentlyOnline
 
@@ -153,10 +154,19 @@ fun PedagogicalConsultantScreen(
                         - Berikan contoh konkret di dalam kelas.
                         - Gunakan format teks rapi dan hindari rumus LaTeX.
                     """.trimIndent()
-                    GeminiService.generateText(context, aiPrompt)
+
+                    val result = withTimeoutOrNull(6000L) {
+                        GeminiService.generateText(context, aiPrompt)
+                    }
+
+                    if (result.isNullOrBlank()) {
+                        isOnlineActive = false
+                        PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
+                    } else {
+                        result
+                    }
                 } catch (e: Exception) {
                     isOnlineActive = false
-                    snackbarHostState.showSnackbar("Koneksi internet tidak stabil, beralih ke engine offline.")
                     PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
                 }
             } else {
