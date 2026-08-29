@@ -93,6 +93,17 @@ object KurikulumMerdekaReferenceData {
 
     val MODEL_PEMBELAJARAN_LIST = listOf(
         ModelPembelajaranOption(
+            id = "deep_learning",
+            name = "Deep Learning (Pembelajaran Mendalam)",
+            description = "Pendekatan 3 Pilar: Mindful (kesadaran penuh), Meaningful (bermakna), dan Joyful (menyenangkan) untuk pemahaman konsep mendalam.",
+            sintaks = listOf(
+                "1. Mindful Engagement (Fokus & Menghubungkan Pengalaman)",
+                "2. Meaningful Exploration (Eksplorasi Konseptual Kontekstual)",
+                "3. Joyful Active Practice (Aktivitas Bermakna & Kolaborasi Menyenangkan)",
+                "4. Metacognitive Reflection & Transfer Pengetahuan"
+            )
+        ),
+        ModelPembelajaranOption(
             id = "pbl",
             name = "Problem-Based Learning (PBL)",
             description = "Pembelajaran berbasis pemecahan masalah kontekstual nyata untuk melatih berpikir kritis.",
