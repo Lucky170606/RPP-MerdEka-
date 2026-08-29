@@ -69,10 +69,14 @@ fun HomeScreen(
 
     var modulToDelete by remember { mutableStateOf<ModulAjarEntity?>(null) }
 
-    val filteredModul = modulList.filter { modul ->
-        val matchSubject = selectedSubject == "Semua" || modul.subject.equals(selectedSubject, ignoreCase = true)
-        val matchFav = !showOnlyFavorites || modul.isFavorite
-        matchSubject && matchFav
+    val filteredModul by remember(modulList, selectedSubject, showOnlyFavorites) {
+        derivedStateOf {
+            modulList.filter { modul ->
+                val matchSubject = selectedSubject == "Semua" || modul.subject.equals(selectedSubject, ignoreCase = true)
+                val matchFav = !showOnlyFavorites || modul.isFavorite
+                matchSubject && matchFav
+            }
+        }
     }
 
     Scaffold(
