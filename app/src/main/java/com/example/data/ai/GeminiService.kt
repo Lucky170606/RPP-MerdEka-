@@ -24,14 +24,14 @@ data class ConnectionTestResult(
 
 object GeminiService {
     private const val TAG = "GeminiService"
-    private const val PRIMARY_MODEL = "gemini-3.5-flash"
-    private const val FALLBACK_MODEL_1 = "gemini-2.5-flash"
-    private const val FALLBACK_MODEL_2 = "gemini-flash-latest"
+    private const val PRIMARY_MODEL = "gemini-2.5-flash"
+    private const val FALLBACK_MODEL_1 = "gemini-2.0-flash"
+    private const val FALLBACK_MODEL_2 = "gemini-1.5-flash"
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(60, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
-        .writeTimeout(60, TimeUnit.SECONDS)
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
     private fun getEndpoint(model: String): String {
@@ -44,9 +44,13 @@ object GeminiService {
         if (apiKey.isNullOrBlank()) {
             return@withContext ConnectionTestResult(
                 isSuccess = false,
-                message = "API Key belum diisi. Silakan masukkan Gemini API Key Anda.",
-                detail = "Dapatkan API Key gratis di https://aistudio.google.com/"
+                message = "API Key belum diisi.",
+                detail = "Silakan masukkan Google Gemini API Key Anda dari https://aistudio.google.com/"
             )
+        }
+
+        if (!apiKey.startsWith("AIzaSy")) {
+            Log.w(TAG, "API Key does not start with AIzaSy: $apiKey")
         }
 
         val testPayload = JSONObject().apply {
@@ -96,21 +100,23 @@ object GeminiService {
                         message = "Koneksi Berhasil! Gemini AI Aktif.",
                         modelUsed = model,
                         httpCode = response.code,
-                        detail = "Respons: $reply"
+                        detail = "Respons Server: $reply"
                     )
                 } else {
                     lastErrorBody = bodyString
-                    // If error is 400 (Bad API Key) or 403 (Permission denied), no need to try other models
                     if (response.code == 400 || response.code == 403) {
-                        var parsedMessage = "API Key tidak valid atau pembatasan kuota/projek Google Cloud."
-                        try {
-                            val errJson = JSONObject(bodyString).optJSONObject("error")
-                            val msg = errJson?.optString("message")
-                            val status = errJson?.optString("status")
-                            if (!msg.isNullOrBlank()) {
-                                parsedMessage = "$msg (Status: $status)"
-                            }
-                        } catch (_: Exception) {}
+                        var parsedMessage = "API Key tidak valid."
+                        if (!apiKey.startsWith("AIzaSy")) {
+                            parsedMessage = "Kunci salah: Google Gemini API Key resmi selalu diawali dengan 'AIzaSy...'. String yang dimasukkan ('${apiKey.take(8)}...') bukan API Key."
+                        } else {
+                            try {
+                                val errJson = JSONObject(bodyString).optJSONObject("error")
+                                val msg = errJson?.optString("message")
+                                if (!msg.isNullOrBlank()) {
+                                    parsedMessage = msg
+                                }
+                            } catch (_: Exception) {}
+                        }
 
                         return@withContext ConnectionTestResult(
                             isSuccess = false,
@@ -131,7 +137,11 @@ object GeminiService {
             isSuccess = false,
             message = "Gagal terhubung ke Gemini API (Kode: $lastHttpCode).",
             httpCode = lastHttpCode,
-            detail = lastErrorBody ?: "Periksa koneksi internet atau format API Key."
+            detail = if (!apiKey.startsWith("AIzaSy")) {
+                "Kunci salah format. Gemini API Key resmi selalu diawali dengan 'AIzaSy...'. String yang dimasukkan ('${apiKey.take(8)}...') bukan API Key resmi."
+            } else {
+                lastErrorBody ?: "Periksa koneksi internet atau kuota Google AI Studio Anda."
+            }
         )
     }
 

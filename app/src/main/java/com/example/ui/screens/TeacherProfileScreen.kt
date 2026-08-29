@@ -28,12 +28,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.ai.ConnectionTestResult
+import com.example.data.ai.GeminiService
 import com.example.data.model.TeacherProfile
 import com.example.ui.components.AppHeader
 import com.example.ui.components.SectionHeader
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.ModulViewModel
 import com.example.ui.viewmodel.Screen
+import com.example.util.ApiKeyManager
 import com.example.util.AppThemeStyle
 import com.example.util.ThemeManager
 import com.example.util.ThemeMode
@@ -64,6 +67,10 @@ fun TeacherProfileScreen(
 
     val currentThemeStyle by ThemeManager.currentTheme.collectAsStateWithLifecycle()
     val currentThemeMode by ThemeManager.currentMode.collectAsStateWithLifecycle()
+
+    var apiKeyInput by remember { mutableStateOf(ApiKeyManager.getApiKey(context) ?: "") }
+    var isTestingApiKey by remember { mutableStateOf(false) }
+    var apiKeyTestResult by remember { mutableStateOf<ConnectionTestResult?>(null) }
 
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Profil & Sekolah", "Tema Tampilan", "Pengaturan AI", "Format Cetak", "Cadangan & Pemulihan", "Panduan & Info")
@@ -547,7 +554,7 @@ fun TeacherProfileScreen(
                     }
 
                     2 -> {
-                        // TAB 2: Pengaturan AI
+                        // TAB 2: Pengaturan AI & Gemini API Key
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(12.dp),
@@ -557,42 +564,229 @@ fun TeacherProfileScreen(
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(12.dp),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(16.dp),
-                                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        SectionHeader(title = "Konfigurasi Konsultan AI", icon = Icons.Default.AutoAwesome)
-                                        Text("Kelola API Key Gemini Anda secara mandiri untuk menggunakan fitur konsultan AI. Pastikan Anda memiliki API Key yang valid dari Google AI Studio.", style = MaterialTheme.typography.bodySmall)
-                                        Button(
-                                            onClick = { viewModel.navigateTo(Screen.Settings) },
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Text("Atur Gemini API Key")
-                                        }
-                                    }
-                                }
-                            }
-                            item {
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp),
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                                     border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
                                 ) {
                                     Column(
                                         modifier = Modifier.padding(16.dp),
-                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                        verticalArrangement = Arrangement.spacedBy(14.dp)
                                     ) {
-                                        SectionHeader(title = "Tutorial: Mendapatkan API Key", icon = Icons.Default.Help)
-                                        Text("1. Kunjungi https://aistudio.google.com/.", style = MaterialTheme.typography.bodySmall)
-                                        Text("2. Login dengan akun Google Anda.", style = MaterialTheme.typography.bodySmall)
-                                        Text("3. Klik 'Get API Key' di menu samping.", style = MaterialTheme.typography.bodySmall)
-                                        Text("4. Buat kunci baru, salin, lalu tempel di tombol 'Atur Gemini API Key' di atas.", style = MaterialTheme.typography.bodySmall)
+                                        SectionHeader(title = "Konfigurasi Gemini API Key", icon = Icons.Default.AutoAwesome)
+
+                                        Text(
+                                            text = "Masukkan Google Gemini API Key Anda untuk mengaktifkan asisten konsultasi pedagogik dan penyusunan modul ajar real-time berbasis AI.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+
+                                        OutlinedTextField(
+                                            value = apiKeyInput,
+                                            onValueChange = { 
+                                                apiKeyInput = it
+                                                apiKeyTestResult = null
+                                            },
+                                            label = { Text("Google Gemini API Key") },
+                                            placeholder = { Text("AIzaSy...") },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            singleLine = true,
+                                            trailingIcon = {
+                                                if (apiKeyInput.isNotBlank()) {
+                                                    IconButton(onClick = { 
+                                                        apiKeyInput = ""
+                                                        apiKeyTestResult = null
+                                                    }) {
+                                                        Icon(Icons.Default.Clear, contentDescription = "Hapus input")
+                                                    }
+                                                }
+                                            }
+                                        )
+
+                                        // Real-time format validator warning
+                                        if (apiKeyInput.isNotBlank() && !apiKeyInput.trim().startsWith("AIzaSy")) {
+                                            Surface(
+                                                shape = RoundedCornerShape(8.dp),
+                                                color = Color(0xFFFEF3C7),
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B)),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.padding(10.dp),
+                                                    verticalAlignment = Alignment.Top,
+                                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Warning,
+                                                        contentDescription = null,
+                                                        tint = Color(0xFFD97706),
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
+                                                    Column {
+                                                        Text(
+                                                            "Periksa Format Kunci:",
+                                                            fontWeight = FontWeight.Bold,
+                                                            fontSize = 12.sp,
+                                                            color = Color(0xFF92400E)
+                                                        )
+                                                        Text(
+                                                            "Gemini API Key resmi dari Google AI Studio selalu diawali dengan 'AIzaSy...'.\n\nJika kunci Anda diawali dengan 'AQ.' atau teks URL, itu merupakan token sesi web/ID proyek, bukan API Key.",
+                                                            fontSize = 11.sp,
+                                                            color = Color(0xFF78350F),
+                                                            lineHeight = 15.sp
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        // Connection Test Feedback Card
+                                        apiKeyTestResult?.let { res ->
+                                            Surface(
+                                                shape = RoundedCornerShape(10.dp),
+                                                color = if (res.isSuccess) Color(0xFFDCFCE7) else Color(0xFFFEE2E2),
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, if (res.isSuccess) Color(0xFF16A34A) else Color(0xFFDC2626)),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                        Icon(
+                                                            imageVector = if (res.isSuccess) Icons.Default.CheckCircle else Icons.Default.ErrorOutline,
+                                                            contentDescription = null,
+                                                            tint = if (res.isSuccess) Color(0xFF15803D) else Color(0xFFB91C1C),
+                                                            modifier = Modifier.size(18.dp)
+                                                        )
+                                                        Text(
+                                                            text = res.message,
+                                                            fontWeight = FontWeight.Bold,
+                                                            fontSize = 13.sp,
+                                                            color = if (res.isSuccess) Color(0xFF15803D) else Color(0xFFB91C1C)
+                                                        )
+                                                    }
+                                                    if (!res.detail.isNullOrBlank()) {
+                                                        Text(
+                                                            text = res.detail,
+                                                            fontSize = 11.sp,
+                                                            color = if (res.isSuccess) Color(0xFF166534) else Color(0xFF991B1B)
+                                                        )
+                                                    }
+                                                    if (res.modelUsed != null) {
+                                                        Text(
+                                                            text = "Model Aktif: ${res.modelUsed}",
+                                                            fontSize = 10.sp,
+                                                            fontWeight = FontWeight.Medium,
+                                                            color = if (res.isSuccess) Color(0xFF166534) else Color(0xFF991B1B)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Button(
+                                                onClick = {
+                                                    val clean = apiKeyInput.trim()
+                                                    ApiKeyManager.saveApiKey(context, clean)
+                                                    isTestingApiKey = true
+                                                    apiKeyTestResult = null
+                                                    coroutineScope.launch {
+                                                        val result = GeminiService.testConnection(context, clean)
+                                                        apiKeyTestResult = result
+                                                        isTestingApiKey = false
+                                                    }
+                                                },
+                                                modifier = Modifier.weight(1f),
+                                                shape = RoundedCornerShape(10.dp),
+                                                enabled = !isTestingApiKey
+                                            ) {
+                                                if (isTestingApiKey) {
+                                                    CircularProgressIndicator(
+                                                        modifier = Modifier.size(16.dp),
+                                                        color = MaterialTheme.colorScheme.onPrimary,
+                                                        strokeWidth = 2.dp
+                                                    )
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Text("Menguji Koneksi...", fontSize = 12.sp)
+                                                } else {
+                                                    Icon(Icons.Default.Bolt, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Text("Simpan & Uji Koneksi", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                                }
+                                            }
+
+                                            if (apiKeyInput.isNotBlank()) {
+                                                OutlinedButton(
+                                                    onClick = {
+                                                        ApiKeyManager.clearApiKey(context)
+                                                        apiKeyInput = ""
+                                                        apiKeyTestResult = null
+                                                        Toast.makeText(context, "API Key Dihapus", Toast.LENGTH_SHORT).show()
+                                                    },
+                                                    shape = RoundedCornerShape(10.dp),
+                                                    colors = ButtonDefaults.outlinedButtonColors(
+                                                        contentColor = MaterialTheme.colorScheme.error
+                                                    )
+                                                ) {
+                                                    Icon(Icons.Default.DeleteOutline, contentDescription = "Hapus Kunci", modifier = Modifier.size(18.dp))
+                                                }
+                                            }
+                                        }
                                     }
                                 }
+                            }
+
+                            item {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        SectionHeader(title = "Tutorial: Mendapatkan API Key Gratis", icon = Icons.Default.HelpOutline)
+                                        Text(
+                                            "1. Buka browser dan kunjungi: https://aistudio.google.com/",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                        Text(
+                                            "2. Masuk menggunakan akun Google Anda.",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                        Text(
+                                            "3. Tekan menu 'Get API Key' di pojok kiri atas / samping.",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                        Text(
+                                            "4. Klik 'Create API Key' pada proyek Google baru/lama.",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                        Text(
+                                            "5. Salin kuncinya (selalu diawali dengan 'AIzaSy...') dan tempelkan pada kolom di atas.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        
+                                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 4.dp))
+                                        
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                            Text(
+                                                "Tanpa API Key, aplikasi tetap berjalan 100% menggunakan Engine Offline Kurikulum Merdeka bawaan.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                fontSize = 11.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            item {
+                                Spacer(modifier = Modifier.height(20.dp))
                             }
                         }
                     }
