@@ -4,7 +4,10 @@ data class ChatMessage(
     val sender: String, // "USER" or "AI"
     val content: String,
     val timestamp: Long = System.currentTimeMillis(),
-    val source: String? = null
+    val source: String? = null,
+    val isFallback: Boolean = false,
+    val originalQuery: String? = null,
+    val errorReason: String? = null
 )
 
 data class PromptInspiration(
@@ -211,6 +214,51 @@ object PedagogicalConsultantEngine {
                     
                 4. 'Satu Kata Rangkuman':
                    • Setiap siswa menuliskan 1 kata kunci inti materi hari ini di papan tulis bersama.
+                """.trimIndent()
+            }
+
+            // 8. Olahraga & PJOK (Pendidikan Jasmani, Olahraga, dan Kesehatan)
+            lower.contains("olahraga") || lower.contains("pjok") || lower.contains("jasmani") || lower.contains("senam") || lower.contains("kebugaran") -> {
+                """
+                🏃‍♂️ Panduan Pembelajaran PJOK & Olahraga Bermakna (Kurikulum Merdeka):
+                
+                Prinsip Utama: Pembelajaran PJOK bukan untuk mencetak atlet profesional semata, melainkan menumbuhkan pembudayaan gerak sepanjang hayat (Physical Literacy) yang menyenangkan (*Joyful Learning*).
+                
+                1. ⚖️ Diferensiasi Gerak Sesuai Kebugaran Fisik (Tiered Movement):
+                   • Sediakan 3 stasiun/level tantangan: Level 1 (Gerak dasar dengan alat bantu), Level 2 (Beban tubuh standar), Level 3 (Pengembangan ketangkasan & variasi gerak cepat).
+                   • Siswa bebas memilih level awal dan menantang dirinya naik level secara bertahap tanpa takut dinilai buruk.
+                
+                2. 🛡️ Struktur Alur Gerak yang Aman:
+                   • Pemanasan Berbasis Permainan (Game-based Warm up): Hindari statis membosankan, gunakan permainan 'Tag Game' atau 'Garis Gerak'.
+                   • Kegiatan Inti Terstruktur: Berikan umpan balik formatif langsung terkait teknik keselamatan.
+                   • Pendinginan Reflektif (*Mindful Stretching*): Sambil meregangkan otot, ajak siswa mengecek denyut nadi dan refleksi kenyamanan tubuh.
+                
+                3. 🤝 Integrasi Profil Pelajar Pancasila:
+                   • Tanamkan nilai Sportivitas, Kejujuran, Gotong Royong (kerjasama tim), dan Regulasi Diri (mengontrol emosi saat menang/kalah).
+                """.trimIndent()
+            }
+
+            // 9. Pencegahan Tawuran, Bullying, & Disiplin Positif (Restorative Practice)
+            lower.contains("tawuran") || lower.contains("bullying") || lower.contains("perundungan") || lower.contains("berkelahi") || lower.contains("kekerasan") || lower.contains("restitusi") || lower.contains("disiplin") -> {
+                """
+                🛡️ Strategi Pencegahan Tawuran, Bullying & Penerapan Disiplin Positif:
+                
+                Sesuai Permendikbudristek No. 46 Tahun 2023 tentang Pencegahan dan Penanganan Kekerasan di Lingkungan Satuan Pendidikan (PPKSP):
+                
+                1. 🧭 Pendekatan Segitiga Restitusi (Bukan Hukuman Fisik):
+                   • Langkah 1: Menstabilkan Identitas (*'Berbuat salah itu hal manusiawi, tidak ada orang yang sempurna'*).
+                   • Langkah 2: Validasi Tindakan yang Salah (*'Kamu pasti punya alasan melakukan itu, mari kita bicarakan cara yang lebih aman'*).
+                   • Langkah 3: Menanyakan Keyakinan Kelas (*'Nilai atau kesepakatan apa yang ingin kita junjung bersama?'*).
+                
+                2. 👥 Program Teman Pembela (Upstander/Agen Perubahan):
+                   • Latih siswa rumus 4T saat melihat perundungan/perselisihan:
+                     - **Tahan** (jangan ikut menyoraki/merekam jadi penonton).
+                     - **Tegur/Alihkan** (ajak korban menjauh dengan sopan).
+                     - **Temani** (beri dukungan emosional).
+                     - **Temui Guru/TPPK** (laporkan segera secara rahasia).
+                
+                3. ⚡ Penyaluran Energi & Ruang Ekspresi:
+                   • Buka wadah ekstrakurikuler bela diri terarah, turnamen olahraga antar-kelas, dan panggung minat bakat seni secara rutin untuk mengalihkan agresivitas remaja ke prestasi positif.
                 """.trimIndent()
             }
 

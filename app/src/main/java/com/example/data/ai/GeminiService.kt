@@ -26,22 +26,33 @@ object GeminiService {
     private const val TAG = "GeminiService"
     
     val SUPPORTED_MODELS = listOf(
-        "gemini-2.0-flash",
-        "gemini-1.5-flash",
+        "gemini-2.5-flash",
+        "gemini-3.5-flash",
         "gemini-3.6-flash",
         "gemini-3.7-flash",
-        "gemini-2.5-flash",
+        "gemini-flash-latest",
         "gemini-flash"
     )
 
+    @Volatile
+    var activeModel: String = "gemini-2.5-flash"
+
     private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(25, TimeUnit.SECONDS)
+        .readTimeout(25, TimeUnit.SECONDS)
+        .writeTimeout(25, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
         .build()
 
     private fun getEndpoint(model: String): String {
         return "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent"
+    }
+
+    private fun getPrioritizedModels(): List<String> {
+        val list = mutableListOf<String>()
+        list.add(activeModel)
+        SUPPORTED_MODELS.forEach { if (it != activeModel) list.add(it) }
+        return list
     }
 
     suspend fun testConnection(context: Context, customKey: String? = null): ConnectionTestResult = withContext(Dispatchers.IO) {
@@ -77,7 +88,7 @@ object GeminiService {
         var lastErrorDetail: String? = null
         var lastModelAttempted: String? = null
 
-        for (model in SUPPORTED_MODELS) {
+        for (model in getPrioritizedModels()) {
             lastModelAttempted = model
             try {
                 val request = Request.Builder()
@@ -92,6 +103,7 @@ object GeminiService {
                 val bodyString = response.body?.string() ?: ""
 
                 if (response.isSuccessful) {
+                    activeModel = model
                     val json = JSONObject(bodyString)
                     val reply = json.optJSONArray("candidates")
                         ?.optJSONObject(0)
@@ -249,7 +261,7 @@ object GeminiService {
             
             var responseBody: String? = null
 
-            for (model in SUPPORTED_MODELS) {
+            for (model in getPrioritizedModels()) {
                 try {
                     val request = Request.Builder()
                         .url(getEndpoint(model))
@@ -261,6 +273,7 @@ object GeminiService {
                     val response = client.newCall(request).execute()
                     val body = response.body?.string() ?: ""
                     if (response.isSuccessful && body.isNotBlank()) {
+                        activeModel = model
                         responseBody = body
                         break
                     }
@@ -414,7 +427,7 @@ object GeminiService {
 
             val requestBody = jsonRequest.toString().toRequestBody("application/json".toMediaType())
 
-            for (model in SUPPORTED_MODELS) {
+            for (model in getPrioritizedModels()) {
                 try {
                     val request = Request.Builder()
                         .url(getEndpoint(model))
@@ -431,6 +444,7 @@ object GeminiService {
                         val candidates = parsedJson.optJSONArray("candidates")
                         val textOutput = candidates?.optJSONObject(0)?.optJSONObject("content")?.optJSONArray("parts")?.optJSONObject(0)?.optString("text")
                         if (!textOutput.isNullOrBlank()) {
+                            activeModel = model
                             return@withContext Result.success(textOutput.trim())
                         }
                     }
@@ -476,7 +490,7 @@ object GeminiService {
         val requestBody = jsonRequest.toString().toRequestBody("application/json".toMediaType())
 
         var lastException: Exception? = null
-        for (model in SUPPORTED_MODELS) {
+        for (model in getPrioritizedModels()) {
             try {
                 val request = Request.Builder()
                     .url(getEndpoint(model))
@@ -493,6 +507,7 @@ object GeminiService {
                     val candidates = parsedJson.optJSONArray("candidates")
                     val textOutput = candidates?.optJSONObject(0)?.optJSONObject("content")?.optJSONArray("parts")?.optJSONObject(0)?.optString("text")
                     if (!textOutput.isNullOrBlank()) {
+                        activeModel = model
                         return@withContext textOutput.trim()
                     }
                 } else {

@@ -148,14 +148,16 @@ fun PedagogicalConsultantScreen(
         )
     )
 
-    fun handleSend(textToSend: String) {
+    fun handleSend(textToSend: String, retryIndex: Int? = null) {
         val trimmed = textToSend.trim()
         if (trimmed.isEmpty() || isProcessing) return
 
         keyboardController?.hide()
         queryText = ""
 
-        messages.add(ChatMessage(sender = "USER", content = trimmed))
+        if (retryIndex == null) {
+            messages.add(ChatMessage(sender = "USER", content = trimmed))
+        }
         isProcessing = true
 
         coroutineScope.launch {
@@ -166,6 +168,9 @@ fun PedagogicalConsultantScreen(
             // Check real-time connectivity & API Key
             val hasKey = GeminiService.isAvailable(context)
             var usedSource = "Offline Kurikulum Merdeka"
+            var isFallback = false
+            var errorReason: String? = null
+
             val answer = if (hasKey) {
                 try {
                     val aiPrompt = """
@@ -174,35 +179,55 @@ fun PedagogicalConsultantScreen(
                         
                         PANDUAN FORMAT:
                         - Berikan poin-poin yang jelas dan mudah dipahami.
-                        - Berikan contoh konkret di dalam kelas.
+                        - Berikan contoh konkret di dalam kelas atau lingkungan sekolah.
                         - Gunakan format teks rapi dan hindari rumus LaTeX.
                     """.trimIndent()
 
-                    val result = withTimeoutOrNull(45000L) {
+                    val result = withTimeoutOrNull(25000L) {
                         GeminiService.generateText(context, aiPrompt)
                     }
 
                     if (result.isNullOrBlank()) {
                         isOnlineActive = false
                         usedSource = "Offline Kurikulum Merdeka"
+                        isFallback = true
+                        errorReason = "Waktu tunggu habis (Timeout)"
                         PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
                     } else {
                         isOnlineActive = true
                         usedSource = "Gemini AI"
+                        isFallback = false
                         result
                     }
                 } catch (e: Exception) {
                     isOnlineActive = false
                     usedSource = "Offline Kurikulum Merdeka"
+                    isFallback = true
+                    errorReason = e.localizedMessage ?: "Gangguan jaringan API"
                     PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
                 }
             } else {
                 isOnlineActive = false
                 usedSource = "Offline Kurikulum Merdeka"
+                isFallback = false
                 PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
             }
 
-            messages.add(ChatMessage(sender = "AI", content = answer, source = usedSource))
+            val responseMsg = ChatMessage(
+                sender = "AI",
+                content = answer,
+                source = usedSource,
+                isFallback = isFallback,
+                originalQuery = trimmed,
+                errorReason = errorReason
+            )
+
+            if (retryIndex != null && retryIndex in messages.indices) {
+                messages[retryIndex] = responseMsg
+            } else {
+                messages.add(responseMsg)
+            }
+
             isProcessing = false
             if (messages.isNotEmpty()) {
                 listState.animateScrollToItem(messages.size - 1)
@@ -338,13 +363,16 @@ fun PedagogicalConsultantScreen(
                     if (msg.sender == "USER") {
                         ModernUserBubble(content = msg.content)
                     } else {
+                        val msgIndex = messages.indexOf(msg)
                         ModernAiBubble(
-                            content = msg.content,
-                            source = msg.source,
+                            message = msg,
                             onCopy = {
                                 clipboardManager.setText(AnnotatedString(msg.content))
                                 Toast.makeText(context, "Jawaban disalin ke papan klip", Toast.LENGTH_SHORT).show()
-                            }
+                            },
+                            onRetryGemini = if (msg.isFallback && !msg.originalQuery.isNullOrBlank()) {
+                                { handleSend(msg.originalQuery, msgIndex) }
+                            } else null
                         )
                     }
                 }
@@ -352,7 +380,8 @@ fun PedagogicalConsultantScreen(
                 // Thinking row
                 if (isProcessing) {
                     item {
-                        ModernAiThinkingRow()
+                        val hasKey = isOnlineActive || GeminiService.isAvailable(context)
+                        ModernAiThinkingRow(hasKey = hasKey)
                     }
                 }
             }
@@ -764,10 +793,13 @@ fun ModernUserBubble(content: String) {
 
 @Composable
 fun ModernAiBubble(
-    content: String,
-    source: String? = null,
-    onCopy: () -> Unit
+    message: ChatMessage,
+    onCopy: () -> Unit,
+    onRetryGemini: (() -> Unit)? = null
 ) {
+    val isGemini = message.source?.contains("Gemini", ignoreCase = true) == true
+    val isFallback = message.isFallback
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Start,
@@ -794,6 +826,35 @@ fun ModernAiBubble(
             modifier = Modifier.weight(1f),
             horizontalAlignment = Alignment.Start
         ) {
+            if (isFallback) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFFFEF3C7),
+                    border = BorderStroke(1.dp, Color(0xFFFDE68A)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = Color(0xFFB45309),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = "Koneksi Gemini bermasalah (${message.errorReason ?: "terkendala"}). Menampilkan modul dari Bank Kurikulum Merdeka Offline.",
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 15.sp),
+                            color = Color(0xFF92400E)
+                        )
+                    }
+                }
+            }
+
             Surface(
                 shape = RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 18.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
@@ -802,41 +863,59 @@ fun ModernAiBubble(
                 Column(
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
                 ) {
-                    RenderMarkdownBlocks(text = content)
+                    RenderMarkdownBlocks(text = message.content)
                 }
             }
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Action Row with Source Badge and Copy Button
+            // Action Row with Source Badge, Copy Button, and Retry Button
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (!source.isNullOrBlank()) {
-                    val isGemini = source.contains("Gemini", ignoreCase = true)
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = if (isGemini) Color(0xFFDCFCE7) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
-                        border = BorderStroke(1.dp, if (isGemini) Color(0xFF86EFAC) else MaterialTheme.colorScheme.outlineVariant)
+                val badgeColor = when {
+                    isGemini -> Color(0xFFDCFCE7)
+                    isFallback -> Color(0xFFFEF3C7)
+                    else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+                }
+                val badgeBorder = when {
+                    isGemini -> Color(0xFF86EFAC)
+                    isFallback -> Color(0xFFFDE68A)
+                    else -> MaterialTheme.colorScheme.outlineVariant
+                }
+                val badgeText = when {
+                    isGemini -> "Gemini AI"
+                    isFallback -> "Offline (Fallback)"
+                    else -> "Kurikulum Merdeka Offline"
+                }
+                val badgeIconTint = when {
+                    isGemini -> Color(0xFF15803D)
+                    isFallback -> Color(0xFFB45309)
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = badgeColor,
+                    border = BorderStroke(1.dp, badgeBorder)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (isGemini) Icons.Default.AutoAwesome else Icons.Default.MenuBook,
-                                contentDescription = null,
-                                tint = if (isGemini) Color(0xFF15803D) else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(11.dp)
-                            )
-                            Text(
-                                text = if (isGemini) "Gemini AI" else "Kurikulum Merdeka",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.SemiBold),
-                                color = if (isGemini) Color(0xFF15803D) else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Icon(
+                            imageVector = if (isGemini) Icons.Default.AutoAwesome else Icons.Default.MenuBook,
+                            contentDescription = null,
+                            tint = badgeIconTint,
+                            modifier = Modifier.size(11.dp)
+                        )
+                        Text(
+                            text = badgeText,
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.SemiBold),
+                            color = badgeIconTint
+                        )
                     }
                 }
 
@@ -861,6 +940,33 @@ fun ModernAiBubble(
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Medium),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                }
+
+                if (onRetryGemini != null) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+                        modifier = Modifier.clickable(onClick = onRetryGemini)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Coba Lagi Gemini",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(11.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Coba Gemini AI",
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
             }
@@ -979,7 +1085,7 @@ fun RenderMarkdownBlocks(text: String) {
 }
 
 @Composable
-fun ModernAiThinkingRow() {
+fun ModernAiThinkingRow(hasKey: Boolean = true) {
     val infiniteTransition = rememberInfiniteTransition(label = "dots")
     val alpha1 by infiniteTransition.animateFloat(
         initialValue = 0.2f, targetValue = 1f,
@@ -1028,7 +1134,7 @@ fun ModernAiThinkingRow() {
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
-                    text = "AI sedang menyusun saran praktis",
+                    text = if (hasKey) "Gemini AI sedang merumuskan solusi..." else "Menyiapkan panduan Kurikulum Merdeka...",
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, fontWeight = FontWeight.Medium),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
