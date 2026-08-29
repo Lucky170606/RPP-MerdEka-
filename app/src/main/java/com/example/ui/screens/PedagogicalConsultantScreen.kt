@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -42,12 +44,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.data.ai.ChatMessage
+import com.example.data.ai.ConnectionTestResult
 import com.example.data.ai.GeminiService
 import com.example.data.ai.PedagogicalConsultantEngine
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.ModulViewModel
 import com.example.ui.viewmodel.Screen
+import com.example.util.ApiKeyManager
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.regex.Pattern
@@ -86,6 +92,12 @@ fun PedagogicalConsultantScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     var isOnlineActive by remember { mutableStateOf(false) }
+
+    // Gemini API Key BottomSheet state
+    var showApiKeySheet by remember { mutableStateOf(false) }
+    var sheetApiKey by remember { mutableStateOf("") }
+    var isTestingSheetKey by remember { mutableStateOf(false) }
+    var sheetTestResult by remember { mutableStateOf<ConnectionTestResult?>(null) }
 
     // Recheck connectivity on enter
     LaunchedEffect(Unit) {
@@ -245,7 +257,12 @@ fun PedagogicalConsultantScreen(
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .clickable { viewModel.navigateTo(Screen.Settings) }
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                sheetApiKey = ApiKeyManager.getApiKey(context) ?: ""
+                                sheetTestResult = null
+                                showApiKeySheet = true
+                            }
                     ) {
                         Text(
                             text = "Ruang Konsultasi Guru AI",
@@ -268,10 +285,16 @@ fun PedagogicalConsultantScreen(
                         }
                     }
 
-                    IconButton(onClick = { viewModel.navigateTo(Screen.Settings) }) {
+                    IconButton(
+                        onClick = {
+                            sheetApiKey = ApiKeyManager.getApiKey(context) ?: ""
+                            sheetTestResult = null
+                            showApiKeySheet = true
+                        }
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "Pengaturan API Key",
+                            contentDescription = "Pengaturan Gemini AI",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -411,6 +434,255 @@ fun PedagogicalConsultantScreen(
                             tint = if (queryText.isNotBlank() && !isProcessing) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                             modifier = Modifier.size(18.dp)
                         )
+                    }
+                }
+            }
+        }
+    }
+
+    // Dialog: Pengaturan Cepat Gemini AI (Langsung tampil penuh di tengah tanpa perlu swipe)
+    if (showApiKeySheet) {
+        Dialog(
+            onDismissRequest = { showApiKeySheet = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.92f)
+                    .wrapContentHeight()
+                    .padding(vertical = 16.dp),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(38.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                            Column {
+                                Text(
+                                    text = "Pengaturan Gemini AI",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                                )
+                                Text(
+                                    text = "Konsultan Pedagogik & Generator Online",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        IconButton(
+                            onClick = { showApiKeySheet = false },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(Icons.Default.Close, contentDescription = "Tutup", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                    Text(
+                        text = "Hubungkan Google Gemini API Key Anda untuk konsultasi interaktif real-time dan analisis pembelajaran mendalam.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    OutlinedTextField(
+                        value = sheetApiKey,
+                        onValueChange = {
+                            sheetApiKey = it
+                            sheetTestResult = null
+                        },
+                        label = { Text("Gemini API Key") },
+                        placeholder = { Text("Contoh: AIzaSy... atau AQ....") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        trailingIcon = {
+                            if (sheetApiKey.isNotEmpty()) {
+                                IconButton(onClick = {
+                                    sheetApiKey = ""
+                                    sheetTestResult = null
+                                }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Hapus")
+                                }
+                            }
+                        }
+                    )
+
+                    // Format Hint if short or unrecognized
+                    if (sheetApiKey.isNotBlank()) {
+                        val clean = sheetApiKey.trim()
+                        val isRecognized = clean.startsWith("AQ.") || clean.startsWith("AIzaSy")
+                        if (!isRecognized && clean.length < 20) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFFFEF3C7),
+                                border = BorderStroke(1.dp, Color(0xFFF59E0B)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(10.dp),
+                                    verticalAlignment = Alignment.Top,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Info,
+                                        contentDescription = null,
+                                        tint = Color(0xFFD97706),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Text(
+                                        "Format Kunci: Google AI Studio biasanya diawali 'AQ.' (kunci Auth baru) atau 'AIzaSy' (kunci lama) dengan panjang sekitar 39 karakter.",
+                                        fontSize = 11.sp,
+                                        color = Color(0xFF78350F),
+                                        lineHeight = 15.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Diagnostic Result Box
+                    sheetTestResult?.let { res ->
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (res.isSuccess) Color(0xFFDCFCE7) else Color(0xFFFEE2E2),
+                            border = BorderStroke(1.dp, if (res.isSuccess) Color(0xFF16A34A) else Color(0xFFDC2626)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Icon(
+                                        imageVector = if (res.isSuccess) Icons.Default.CheckCircle else Icons.Default.ErrorOutline,
+                                        contentDescription = null,
+                                        tint = if (res.isSuccess) Color(0xFF15803D) else Color(0xFFB91C1C),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Text(
+                                        text = res.message,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = if (res.isSuccess) Color(0xFF15803D) else Color(0xFFB91C1C)
+                                    )
+                                }
+                                if (!res.detail.isNullOrBlank()) {
+                                    Text(
+                                        text = res.detail,
+                                        fontSize = 11.sp,
+                                        color = if (res.isSuccess) Color(0xFF166534) else Color(0xFF991B1B)
+                                    )
+                                }
+                                if (res.modelUsed != null) {
+                                    Text(
+                                        text = "Model Aktif: ${res.modelUsed}",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (res.isSuccess) Color(0xFF166534) else Color(0xFF991B1B)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Action Buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                val clean = sheetApiKey.trim()
+                                ApiKeyManager.saveApiKey(context, clean)
+                                Toast.makeText(context, "API Key Disimpan!", Toast.LENGTH_SHORT).show()
+
+                                // Trigger live test immediately
+                                isTestingSheetKey = true
+                                sheetTestResult = null
+                                coroutineScope.launch {
+                                    val result = GeminiService.testConnection(context, clean)
+                                    sheetTestResult = result
+                                    isTestingSheetKey = false
+                                    isOnlineActive = result.isSuccess
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            enabled = !isTestingSheetKey
+                        ) {
+                            if (isTestingSheetKey) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Menguji...", fontSize = 13.sp)
+                            } else {
+                                Icon(Icons.Default.Bolt, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Simpan & Uji Koneksi AI", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            }
+                        }
+
+                        if (sheetApiKey.isNotBlank()) {
+                            OutlinedButton(
+                                onClick = {
+                                    ApiKeyManager.clearApiKey(context)
+                                    sheetApiKey = ""
+                                    sheetTestResult = null
+                                    isOnlineActive = false
+                                    Toast.makeText(context, "API Key Dihapus (Beralih ke Offline)", Toast.LENGTH_SHORT).show()
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Icon(Icons.Default.DeleteOutline, contentDescription = "Hapus", modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+
+                    // Guidance info
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("💡 Cara dapat API Key Gratis:", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            Text("1. Buka situs https://aistudio.google.com/ di browser HP/Laptop.", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("2. Klik 'Get API Key' > 'Create API Key', lalu salin kuncinya ke sini.", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("3. Jika tidak ada internet/API Key, aplikasi tetap aktif 100% menggunakan Bank Modul Offline Kurikulum Merdeka.", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary)
+                        }
                     }
                 }
             }
