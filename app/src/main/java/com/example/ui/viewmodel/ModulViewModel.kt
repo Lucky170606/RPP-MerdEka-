@@ -51,6 +51,7 @@ sealed class GenerationState {
     data class Error(val message: String) : GenerationState()
 }
 
+@OptIn(kotlinx.coroutines.FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ModulViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: ModulRepository
     private val protaDao: ProtaDao
