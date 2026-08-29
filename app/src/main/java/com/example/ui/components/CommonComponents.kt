@@ -74,7 +74,7 @@ fun AppHeader(
 
 @Composable
 fun BadgeChip(
-    text: String,
+    text: String? = null,
     backgroundColor: Color = MaterialTheme.colorScheme.secondaryContainer,
     textColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
     icon: ImageVector? = null
@@ -84,25 +84,31 @@ fun BadgeChip(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .background(backgroundColor)
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = if (text != null) 8.dp else 6.dp, vertical = 4.dp)
     ) {
         if (icon != null) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = textColor,
-                modifier = Modifier.size(12.dp)
+                modifier = Modifier.size(if (text != null) 12.dp else 16.dp)
             )
-            Spacer(modifier = Modifier.width(4.dp))
+            if (text != null) {
+                Spacer(modifier = Modifier.width(4.dp))
+            }
         }
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 11.sp
-            ),
-            color = textColor
-        )
+        if (text != null) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 11.sp
+                ),
+                color = textColor,
+                maxLines = 1,
+                softWrap = false
+            )
+        }
     }
 }
 

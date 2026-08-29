@@ -134,7 +134,6 @@ fun EditorCanvasScreen(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             BadgeChip(
-                                text = "Tersimpan",
                                 backgroundColor = EduGreen100,
                                 textColor = EduGreen600,
                                 icon = Icons.Default.CheckCircle
@@ -1161,9 +1160,9 @@ fun PrintSectionBlock(title: String, content: String) {
         if (content.isNotBlank()) {
             Text(
                 text = content,
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 16.sp),
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, lineHeight = 20.sp),
                 color = EduSlate900,
-                modifier = Modifier.padding(horizontal = 2.dp)
+                modifier = Modifier.padding(horizontal = 12.dp)
             )
         }
     }
@@ -1184,8 +1183,9 @@ fun PrintSubsectionBlock(subtitle: String, content: String) {
         )
         Text(
             text = content,
-            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, lineHeight = 18.sp),
-            color = EduSlate900
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, lineHeight = 20.sp),
+            color = EduSlate900,
+            modifier = Modifier.padding(horizontal = 8.dp)
         )
     }
 }

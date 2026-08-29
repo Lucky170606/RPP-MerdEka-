@@ -39,6 +39,11 @@ object PedagogicalConsultantEngine {
             title = "Asesmen Formatif Tanpa Kertas (Paperless)",
             query = "Berikan 4 metode asesmen formatif cepat dan menyenangkan tanpa membebani guru dengan koreksi kertas!",
             category = "Asesmen"
+        ),
+        PromptInspiration(
+            title = "Metode Deep Learning",
+            query = "Bagaimana menerapkan metode Deep Learning (pembelajaran mendalam) dalam Kurikulum Merdeka agar siswa lebih kritis?",
+            category = "Pedagogik"
         )
     )
 
@@ -128,6 +133,21 @@ object PedagogicalConsultantEngine {
                    
                 4. 'Satu Kata Rangkuman':
                    • Setiap siswa menuliskan 1 kata kunci inti materi hari ini di papan tulis bersama.
+                """.trimIndent()
+            }
+
+            lower.contains("deep learning") || lower.contains("pembelajaran mendalam") -> {
+                """
+                🚀 Metode Deep Learning (Pembelajaran Mendalam) dalam Kurikulum Merdeka:
+                
+                Deep Learning berfokus pada pemahaman konsep yang kuat dan kemampuan menerapkan pengetahuan dalam situasi baru.
+                
+                1. **Eksplorasi Kontekstual**: Mulai dengan masalah nyata yang kompleks di sekitar siswa.
+                2. **Refleksi Kritis**: Dorong siswa untuk bertanya 'mengapa' dan 'bagaimana' alih-alih sekadar 'apa'.
+                3. **Transfer Pengetahuan**: Berikan tantangan di mana siswa harus menerapkan konsep yang baru dipelajari ke dalam skenario baru yang berbeda.
+                4. **Koneksi Antar Konsep**: Bantu siswa melihat hubungan antara materi ini dengan materi lain atau bidang ilmu yang berbeda.
+                
+                Tujuannya adalah agar siswa mampu membangun pemahaman yang bermakna dan bertahan lama.
                 """.trimIndent()
             }
 

@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -15,8 +16,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,13 +54,33 @@ fun PedagogicalConsultantScreen(
         )
     }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val isGeminiConnected = GeminiService.isAvailable(context)
+
+    LaunchedEffect(Unit) {
+        if (isGeminiConnected) {
+            snackbarHostState.showSnackbar("Gemini AI berhasil terkoneksi!")
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             AppHeader(
                 title = "Ruang Konsultasi Guru AI",
                 subtitle = "Konsultasi Pedagogik, Diferensiasi, & Manajemen Kelas",
                 showBackButton = true,
-                onBackClick = { viewModel.navigateTo(Screen.Home) }
+                onBackClick = { viewModel.navigateTo(Screen.Home) },
+                actions = {
+                    // Status Indicator
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .clip(CircleShape)
+                            .background(if (isGeminiConnected) Color.Green else Color.Gray)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                }
             )
         },
         bottomBar = {
@@ -65,7 +89,7 @@ fun PedagogicalConsultantScreen(
                 shadowElevation = 8.dp,
                 color = MaterialTheme.colorScheme.surface
             ) {
-                Column(modifier = Modifier.padding(12.dp)) {
+                Column(modifier = Modifier.padding(12.dp).navigationBarsPadding()) {
                     // Quick Prompts row
                     Text("Inspirasi Pertanyaan Cepat:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(4.dp))
@@ -101,7 +125,9 @@ fun PedagogicalConsultantScreen(
                             maxLines = 3,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                                unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent
                             )
                         )
 
@@ -117,12 +143,20 @@ fun PedagogicalConsultantScreen(
                                         // Attempt Gemini or fallback to offline knowledge base
                                         val answer = try {
                                             if (GeminiService.isAvailable(context)) {
-                                                val aiPrompt = "Sebagai konsultan ahli Kurikulum Merdeka Kemendikbudristek, berikan panduan praktis dan terstruktur untuk pertanyaan guru berikut:\n$query"
+                                                val aiPrompt = """
+                                                    Sebagai konsultan ahli Kurikulum Merdeka Kemendikbudristek, berikan panduan praktis dan terstruktur untuk pertanyaan guru berikut:
+                                                    $query
+                                                    
+                                                    CATATAN PENTING: Gunakan format teks biasa, JANGAN gunakan format LaTeX atau simbol matematika khusus (seperti $\frac...). Jika ada rumus matematika, tuliskan dalam format teks biasa yang mudah dibaca (contoh: 1/2).
+                                                """.trimIndent()
                                                 GeminiService.generateText(context, aiPrompt)
                                             } else {
                                                 PedagogicalConsultantEngine.answerPedagogicalQuery(query)
                                             }
                                         } catch (e: Exception) {
+                                            coroutineScope.launch {
+                                                snackbarHostState.showSnackbar("Gagal terhubung ke Gemini. Menggunakan panduan offline.")
+                                            }
                                             PedagogicalConsultantEngine.answerPedagogicalQuery(query)
                                         }
 
@@ -210,6 +244,16 @@ fun PedagogicalConsultantScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text("Asisten Pedagogik AI", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
+                                    val clipboardManager = LocalClipboardManager.current
+                                    IconButton(
+                                        onClick = {
+                                            clipboardManager.setText(AnnotatedString(msg.content))
+                                            // Optional: Show a toast? But I might not have context readily available or might not want to overcomplicate.
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(Icons.Default.ContentCopy, contentDescription = "Salin Teks", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                    }
                                     BadgeChip(text = "Kurikulum Merdeka", backgroundColor = MaterialTheme.colorScheme.secondaryContainer, textColor = MaterialTheme.colorScheme.onSecondaryContainer)
                                 }
                                 Text(
