@@ -38,6 +38,19 @@ object DocumentExporter {
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Modul Ajar - ${modul.title}</title>
+                <script>
+                    window.MathJax = {
+                        tex: {
+                            inlineMath: [['$', '$'], ['\\(', '\\)']],
+                            displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                            processEscapes: true
+                        },
+                        options: {
+                            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+                        }
+                    };
+                </script>
+                <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
                 <style>
                     body {
                         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -470,6 +483,19 @@ ${modul.lkpdDanMateri}
             <head>
                 <meta charset="UTF-8">
                 <title>${doc.title}</title>
+                <script>
+                    window.MathJax = {
+                        tex: {
+                            inlineMath: [['$', '$'], ['\\(', '\\)']],
+                            displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                            processEscapes: true
+                        },
+                        options: {
+                            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+                        }
+                    };
+                </script>
+                <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
                 <style>
                     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.5; color: #1a202c; padding: 20px; }
                     .header-box { border-bottom: 3px double #1e3a8a; padding-bottom: 12px; margin-bottom: 16px; text-align: center; }
@@ -488,6 +514,7 @@ ${modul.lkpdDanMateri}
                     <h1>KISI-KISI & BANK SOAL ASESMEN KURIKULUM MERDEKA</h1>
                     <h2>MATA PELAJARAN: ${doc.subject.uppercase(Locale.ROOT)} (${doc.topikUjian})</h2>
                     <p>Satuan Pendidikan: $school | Fase: ${doc.fase} (${doc.grade}) | ${doc.jenisAsesmen}</p>
+                    <p style="font-size:8pt; color:#0f766e; margin-top:4px; font-weight:600;">Sistem Penyusun: ${doc.engineName}</p>
                 </div>
 
                 <div class="section-title">A. TABEL KISI-KISI PENULISAN SOAL ASESMEN</div>

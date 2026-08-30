@@ -35,5 +35,7 @@ data class AssessmentDocument(
     val kisiKisiList: List<KisiKisiItem>,
     val soalList: List<SoalHotsItem>,
     val pedomanPenskoran: String,
+    val isOnlineAiGenerated: Boolean = true,
+    val engineName: String = "Gemini AI (Online)",
     val createdAt: Long = System.currentTimeMillis()
 )

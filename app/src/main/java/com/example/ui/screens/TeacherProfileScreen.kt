@@ -3,6 +3,7 @@ package com.example.ui.screens
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
@@ -78,6 +79,10 @@ fun TeacherProfileScreen(
 
     val coroutineScope = rememberCoroutineScope()
     var pendingExportJson by remember { mutableStateOf("") }
+
+    BackHandler {
+        viewModel.navigateTo(Screen.Home)
+    }
 
     // Sync tabs with pager
     LaunchedEffect(pagerState.currentPage) {

@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -54,7 +55,9 @@ import com.example.ui.theme.*
 import com.example.ui.viewmodel.ModulViewModel
 import com.example.ui.viewmodel.Screen
 import com.example.util.ApiKeyManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.regex.Pattern
 
@@ -99,14 +102,27 @@ fun PedagogicalConsultantScreen(
     var isTestingSheetKey by remember { mutableStateOf(false) }
     var sheetTestResult by remember { mutableStateOf<ConnectionTestResult?>(null) }
 
-    // Recheck connectivity on enter
-    LaunchedEffect(Unit) {
-        val hasKey = GeminiService.isAvailable(context)
-        if (hasKey) {
-            val test = GeminiService.testConnection(context)
-            isOnlineActive = test.isSuccess
+    // Intercept back action to close sheet or return directly to Home
+    BackHandler {
+        if (showApiKeySheet) {
+            showApiKeySheet = false
         } else {
-            isOnlineActive = false
+            viewModel.navigateTo(Screen.Home)
+        }
+    }
+
+    // Recheck connectivity on enter asynchronously in background
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            val hasKey = GeminiService.isAvailable(context)
+            if (hasKey) {
+                val test = withTimeoutOrNull(4000L) {
+                    GeminiService.testConnection(context)
+                }
+                isOnlineActive = test?.isSuccess == true
+            } else {
+                isOnlineActive = false
+            }
         }
     }
 
@@ -161,76 +177,92 @@ fun PedagogicalConsultantScreen(
         isProcessing = true
 
         coroutineScope.launch {
-            if (messages.isNotEmpty()) {
-                listState.animateScrollToItem(messages.size - 1)
-            }
-            
-            // Check real-time connectivity & API Key
-            val hasKey = GeminiService.isAvailable(context)
-            var usedSource = "Offline Kurikulum Merdeka"
-            var isFallback = false
-            var errorReason: String? = null
+            try {
+                if (messages.isNotEmpty()) {
+                    listState.animateScrollToItem(messages.size - 1)
+                }
 
-            val answer = if (hasKey) {
-                try {
-                    val aiPrompt = """
-                        Sebagai konsultan ahli Kurikulum Merdeka Kemendikbudristek, berikan panduan praktis, terstruktur, dan aplikatif untuk pertanyaan guru berikut:
-                        $trimmed
-                        
-                        PANDUAN FORMAT:
-                        - Berikan poin-poin yang jelas dan mudah dipahami.
-                        - Berikan contoh konkret di dalam kelas atau lingkungan sekolah.
-                        - Gunakan format teks rapi dan hindari rumus LaTeX.
-                    """.trimIndent()
+                val hasKey = GeminiService.isAvailable(context)
+                var usedSource = "Offline Kurikulum Merdeka"
+                var isFallback = false
+                var errorReason: String? = null
 
-                    val result = withTimeoutOrNull(25000L) {
-                        GeminiService.generateText(context, aiPrompt)
-                    }
+                val answer = if (hasKey) {
+                    try {
+                        val aiPrompt = """
+                            Sebagai konsultan ahli Kurikulum Merdeka Kemendikbudristek, berikan panduan praktis, terstruktur, dan aplikatif untuk pertanyaan guru berikut:
+                            $trimmed
+                            
+                            PANDUAN FORMAT:
+                            - Berikan poin-poin yang jelas dan mudah dipahami.
+                            - Berikan contoh konkret di dalam kelas atau lingkungan sekolah.
+                            - Gunakan format teks rapi dan hindari rumus LaTeX berlebih.
+                        """.trimIndent()
 
-                    if (result.isNullOrBlank()) {
+                        val result = withTimeoutOrNull(10000L) {
+                            GeminiService.generateText(context, aiPrompt)
+                        }
+
+                        if (result.isNullOrBlank()) {
+                            isOnlineActive = false
+                            usedSource = "Offline Kurikulum Merdeka"
+                            isFallback = true
+                            errorReason = "Waktu tunggu habis (Timeout)"
+                            PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
+                        } else {
+                            isOnlineActive = true
+                            usedSource = "Gemini AI"
+                            isFallback = false
+                            result
+                        }
+                    } catch (e: Exception) {
                         isOnlineActive = false
                         usedSource = "Offline Kurikulum Merdeka"
                         isFallback = true
-                        errorReason = "Waktu tunggu habis (Timeout)"
+                        errorReason = e.localizedMessage ?: "Gangguan jaringan API"
                         PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
-                    } else {
-                        isOnlineActive = true
-                        usedSource = "Gemini AI"
-                        isFallback = false
-                        result
                     }
-                } catch (e: Exception) {
+                } else {
                     isOnlineActive = false
                     usedSource = "Offline Kurikulum Merdeka"
-                    isFallback = true
-                    errorReason = e.localizedMessage ?: "Gangguan jaringan API"
+                    isFallback = false
                     PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
                 }
-            } else {
-                isOnlineActive = false
-                usedSource = "Offline Kurikulum Merdeka"
-                isFallback = false
-                PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
-            }
 
-            val responseMsg = ChatMessage(
-                sender = "AI",
-                content = answer,
-                source = usedSource,
-                isFallback = isFallback,
-                originalQuery = trimmed,
-                errorReason = errorReason
-            )
+                val responseMsg = ChatMessage(
+                    sender = "AI",
+                    content = answer,
+                    source = usedSource,
+                    isFallback = isFallback,
+                    originalQuery = trimmed,
+                    errorReason = errorReason
+                )
 
-            if (retryIndex != null && retryIndex in messages.indices) {
-                messages[retryIndex] = responseMsg
-            } else {
-                messages.add(responseMsg)
-            }
-
-            isProcessing = false
-            if (messages.isNotEmpty()) {
-                listState.animateScrollToItem(messages.size - 1)
+                if (retryIndex != null && retryIndex in messages.indices) {
+                    messages[retryIndex] = responseMsg
+                } else {
+                    messages.add(responseMsg)
+                }
+            } catch (t: Throwable) {
+                val fallbackAnswer = PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
+                val fallbackMsg = ChatMessage(
+                    sender = "AI",
+                    content = fallbackAnswer,
+                    source = "Offline Kurikulum Merdeka",
+                    isFallback = true,
+                    originalQuery = trimmed,
+                    errorReason = t.localizedMessage ?: "Sistem beralih ke offline"
+                )
+                if (retryIndex != null && retryIndex in messages.indices) {
+                    messages[retryIndex] = fallbackMsg
+                } else {
+                    messages.add(fallbackMsg)
+                }
+            } finally {
+                isProcessing = false
+                if (messages.isNotEmpty()) {
+                    listState.animateScrollToItem(messages.size - 1)
+                }
             }
         }
     }
@@ -650,7 +682,7 @@ fun PedagogicalConsultantScreen(
                             onClick = {
                                 val clean = sheetApiKey.trim()
                                 ApiKeyManager.saveApiKey(context, clean)
-                                Toast.makeText(context, "API Key Disimpan!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "API Key Disimpan & Diaktifkan!", Toast.LENGTH_SHORT).show()
 
                                 // Trigger live test immediately
                                 isTestingSheetKey = true

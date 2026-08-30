@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextOverflow
 import com.example.data.ai.AdvancedCurriculumEngine
 import com.example.data.model.Fase
 import com.example.data.model.KurikulumMerdekaReferenceData
@@ -112,14 +113,17 @@ fun ProtaPromesScreen(
                 title = {
                     Column {
                         Text(
-                            "Program Tahunan & Semester",
+                            "Prota & Promes",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp
+                            fontSize = 17.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            "Prota & Promes Kurikulum Merdeka",
+                            "Kurikulum Merdeka",
                             fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 },

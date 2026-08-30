@@ -24,6 +24,40 @@ object KurikulumMerdekaReferenceData {
         "Sosiologi"
     )
 
+    fun getSubjectsForFase(fase: String): List<String> {
+        return when (fase) {
+            "Fase A", "Fase B", "Fase C" -> listOf(
+                "Matematika", "Bahasa Indonesia", "Ilmu Pengetahuan Alam dan Sosial (IPAS)",
+                "Pendidikan Pancasila", "Bahasa Inggris", "Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)",
+                "Seni Rupa", "Seni Musik", "Pendidikan Agama Islam dan Budi Pekerti"
+            )
+            "Fase D" -> listOf(
+                "Matematika", "Bahasa Indonesia", "Ilmu Pengetahuan Alam (IPA)", "Ilmu Pengetahuan Sosial (IPS)",
+                "Pendidikan Pancasila", "Bahasa Inggris", "Informatika",
+                "Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)", "Pendidikan Agama Islam dan Budi Pekerti"
+            )
+            "Fase E", "Fase F" -> listOf(
+                "Matematika", "Bahasa Indonesia", "Bahasa Inggris", "Pendidikan Pancasila", "Informatika",
+                "Fisika", "Biologi", "Kimia", "Sejarah", "Geografi", "Ekonomi", "Sosiologi",
+                "Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)", "Pendidikan Agama Islam dan Budi Pekerti"
+            )
+            else -> MATA_PELAJARAN_LIST
+        }
+    }
+
+    val JENIS_ASESMEN_LIST = listOf(
+        "Asesmen Formatif (Selama Proses)",
+        "Asesmen Sumatif (Akhir Lingkup Materi)",
+        "Asesmen Sumatif (Akhir Semester)"
+    )
+
+    fun getTopicsForSubjectAndFase(subject: String, fase: String): List<String> {
+        return CP_DATABASE
+            .filter { it.subject.equals(subject, ignoreCase = true) && it.fase.equals(fase, ignoreCase = true) }
+            .flatMap { it.suggestedTujuan }
+            .distinct()
+    }
+
     val PROFIL_PELAJAR_PANCASILA = listOf(
         ProfilPancasilaDimension(
             id = "p3_beriman",
@@ -193,181 +227,38 @@ object KurikulumMerdekaReferenceData {
     )
 
     val CP_DATABASE = listOf(
-        // FASE A - Matematika
-        CapaianPembelajaranItem(
-            subject = "Matematika",
-            fase = "Fase A",
-            elemen = "Bilangan",
-            capaianText = "Peserta didik menunjukkan pemahaman dan intuisi bilangan (number sense) pada bilangan cacah sampai 100, dapat membaca, menulis, menentukan nilai tempat, membandingkan, mengurutkan, serta melakukan operasi penjumlahan dan pengurangan menggunakan benda-benda konkret.",
-            suggestedTujuan = listOf(
-                "Peserta didik mampu membilang dan menuliskan lambang bilangan cacah 1-50 secara tepat.",
-                "Peserta didik mampu membandingkan dan mengurutkan dua bilangan cacah menggunakan benda konkret.",
-                "Peserta didik mampu menyelesaikan masalah penjumlahan dan pengurangan bilangan cacah dalam kehidupan sehari-hari."
-            ),
-            defaultKeywords = listOf("bilangan", "penjumlahan", "pengurangan", "angka", "cacah", "nilai tempat")
-        ),
-        CapaianPembelajaranItem(
-            subject = "Matematika",
-            fase = "Fase A",
-            elemen = "Geometri",
-            capaianText = "Peserta didik dapat mengenal berbagai bangun datar (segitiga, segiempat, lingkaran) dan bangun ruang (balok, kubus, kerucut, bola) serta menyusun dan mengurai bangun datar.",
-            suggestedTujuan = listOf(
-                "Peserta didik dapat mengidentifikasi berbagai bentuk bangun datar di lingkungan sekitar.",
-                "Peserta didik mampu menyusun bangun datar menjadi bentuk baru (tangram)."
-            ),
-            defaultKeywords = listOf("bangun datar", "geometri", "segitiga", "lingkaran", "kubus")
-        ),
+        // FASE A
+        CapaianPembelajaranItem("Matematika", "Fase A", "Bilangan", "Pemahaman bilangan cacah sampai 100", listOf("Membilang 1-20", "Penjumlahan 1-20", "Pengurangan 1-20"), listOf("bilangan", "tambah", "kurang")),
+        CapaianPembelajaranItem("Bahasa Indonesia", "Fase A", "Membaca", "Pemahaman teks sederhana", listOf("Suku kata", "Cerita pendek", "Kosakata baru"), listOf("baca", "cerita")),
+        
+        // FASE B
+        CapaianPembelajaranItem("Matematika", "Fase B", "Bilangan", "Pemahaman bilangan cacah sampai 10.000", listOf("Perkalian", "Pembagian", "Pecahan sederhana"), listOf("kali", "bagi", "pecahan")),
+        CapaianPembelajaranItem("IPAS", "Fase B", "Sains", "Hubungan bentuk dan fungsi tubuh", listOf("Tumbuhan", "Hewan", "Wujud zat"), listOf("tumbuhan", "hewan", "zat")),
+        CapaianPembelajaranItem("Pendidikan Pancasila", "Fase B", "Pancasila", "Penerapan nilai Pancasila", listOf("Sila 1-3", "Gotong royong", "Aturan sekolah"), listOf("pancasila", "gotong royong")),
 
-        // FASE B - Matematika
-        CapaianPembelajaranItem(
-            subject = "Matematika",
-            fase = "Fase B",
-            elemen = "Bilangan",
-            capaianText = "Peserta didik menunjukkan pemahaman dan intuisi bilangan (number sense) pada bilangan cacah sampai 10.000, pecahan senilai, pecahan desimal persepuluhan dan perseratusan, serta menghubungkan pecahan desimal dan persen.",
-            suggestedTujuan = listOf(
-                "Peserta didik dapat menyajikan dan mengidentifikasi pecahan senilai menggunakan gambar dan benda konkret.",
-                "Peserta didik dapat membandingkan dan mengurutkan pecahan dengan penyebut sama dan berbeda.",
-                "Peserta didik mampu melakukan perkalian dan pembagian bilangan cacah sampai 100."
-            ),
-            defaultKeywords = listOf("pecahan", "pecahan senilai", "perkalian", "pembagian", "persen", "desimal")
-        ),
-        CapaianPembelajaranItem(
-            subject = "Matematika",
-            fase = "Fase B",
-            elemen = "Pengukuran",
-            capaianText = "Peserta didik dapat mengukur panjang dan berat benda menggunakan satuan baku (cm, m, gram, kg), serta menentukan keliling dan luas bangun datar menggunakan satuan baku dan satuan tidak baku.",
-            suggestedTujuan = listOf(
-                "Peserta didik dapat menghitung keliling dan luas persegi dan persegi panjang menggunakan rumus dan media kotak satuan.",
-                "Peserta didik dapat mengukur berat benda menggunakan timbangan satuan baku kg dan gram."
-            ),
-            defaultKeywords = listOf("luas", "keliling", "pengukuran", "panjang", "berat", "satuan baku")
-        ),
+        // FASE C
+        CapaianPembelajaranItem("Matematika", "Fase C", "Bilangan", "Operasi hitung bilangan pecahan", listOf("Penjumlahan pecahan", "Perkalian desimal", "Rasio"), listOf("pecahan", "desimal")),
+        CapaianPembelajaranItem("IPAS", "Fase C", "Sains", "Sistem organ tubuh manusia", listOf("Pencernaan", "Pernapasan", "Rantai makanan"), listOf("pencernaan", "organ")),
+        CapaianPembelajaranItem("Bahasa Indonesia", "Fase C", "Membaca", "Menganalisis informasi teks", listOf("Ide pokok", "Teks narasi", "Teks informasi"), listOf("ide pokok", "teks")),
 
-        // FASE C - Matematika
-        CapaianPembelajaranItem(
-            subject = "Matematika",
-            fase = "Fase C",
-            elemen = "Bilangan",
-            capaianText = "Peserta didik dapat melakukan operasi hitung penjumlahan, pengurangan, perkalian, dan pembagian bilangan pecahan dan desimal, serta memahami konsep perbandingan, skala, FPB dan KPK.",
-            suggestedTujuan = listOf(
-                "Peserta didik dapat menyelesaikan operasi perkalian dan pembagian pecahan dengan teliti.",
-                "Peserta didik mampu menerapkan konsep perbandingan dan skala pada denah dan peta.",
-                "Peserta didik mampu menentukan FPB dan KPK dari dua bilangan untuk menyelesaikan masalah kontekstual."
-            ),
-            defaultKeywords = listOf("pecahan desimal", "perbandingan", "skala", "fpb", "kpk", "rasio")
-        ),
+        // FASE D
+        CapaianPembelajaranItem("Bahasa Indonesia", "Fase D", "Membaca", "Mengevaluasi informasi teks", listOf("Teks prosedur", "Teks eksplanasi", "Teks deskripsi"), listOf("prosedur", "eksplanasi", "deskripsi")),
+        CapaianPembelajaranItem("IPA", "Fase D", "Sains", "Klasifikasi makhluk hidup", listOf("Struktur sel", "Sistem organisasi", "Ekosistem"), listOf("sel", "ekosistem")),
+        CapaianPembelajaranItem("IPS", "Fase D", "Sosial", "Interaksi sosial dan lingkungan", listOf("Letak geografis", "Kegiatan ekonomi", "Perubahan sosial"), listOf("geografis", "ekonomi")),
+        CapaianPembelajaranItem("Matematika", "Fase D", "Aljabar", "Pemahaman aljabar", listOf("Persamaan linear", "Perbandingan", "Himpunan"), listOf("persamaan", "aljabar")),
 
-        // FASE B - IPAS
-        CapaianPembelajaranItem(
-            subject = "Ilmu Pengetahuan Alam dan Sosial (IPAS)",
-            fase = "Fase B",
-            elemen = "Pemahaman IPAS (Sains & Sosial)",
-            capaianText = "Peserta didik menganalisis hubungan antara bentuk serta fungsi bagian tubuh pada hewan dan tumbuhan, siklus hidup makhluk hidup, wujud zat dan perubahannya, bentuk energi dan perubahannya, serta keragaman kearifan lokal daerah setempat.",
-            suggestedTujuan = listOf(
-                "Peserta didik dapat mengidentifikasi bagian-bagian tubuh tumbuhan dan fungsinya melalui pengamatan langsung.",
-                "Peserta didik dapat mendeskripsikan proses fotosintesis pada tumbuhan hijau dengan tepat.",
-                "Peserta didik dapat menganalisis perubahan wujud zat dalam kehidupan sehari-hari (mencair, membeku, menguap, mengembun)."
-            ),
-            defaultKeywords = listOf("bagian tubuh tumbuhan", "fotosintesis", "wujud zat", "energi", "kearifan lokal", "siklus hidup")
-        ),
+        // FASE E
+        CapaianPembelajaranItem("Bahasa Indonesia", "Fase E", "Menulis", "Menulis gagasan kreatif", listOf("Laporan Observasi", "Negosiasi", "Anekdot"), listOf("lho", "negosiasi", "anekdot")),
+        CapaianPembelajaranItem("Pendidikan Pancasila", "Fase E", "Pancasila", "Analisis rumusan Pancasila", listOf("Sejarah Pancasila", "Nilai Pancasila", "Norma"), listOf("pancasila", "norma")),
+        CapaianPembelajaranItem("Informatika", "Fase E", "Algoritma", "Strategi algoritmik", listOf("Berpikir komputasional", "Flowchart", "Pemrograman"), listOf("algoritma", "flowchart", "coding")),
+        CapaianPembelajaranItem("Matematika", "Fase E", "Aljabar", "Pemodelan matematika", listOf("Eksponen", "Logaritma", "Sistem persamaan"), listOf("eksponen", "logaritma")),
 
-        // FASE C - IPAS
-        CapaianPembelajaranItem(
-            subject = "Ilmu Pengetahuan Alam dan Sosial (IPAS)",
-            fase = "Fase C",
-            elemen = "Pemahaman IPAS (Sains & Sosial)",
-            capaianText = "Peserta didik merefleksikan bagaimana sistem organ tubuh manusia (pernapasan, pencernaan, peredaran darah) bekerja, menganalisis hubungan antar makhluk hidup pada ekosistem (rantai makanan, jaring makanan), gaya dan gerak, serta sistem tata surya.",
-            suggestedTujuan = listOf(
-                "Peserta didik dapat menjelaskan alur sistem pencernaan manusia dan cara menjaga kesehatannya.",
-                "Peserta didik mampu menganalisis peran produsen, konsumen, dan dekomposer dalam rantai makanan pada suatu ekosistem.",
-                "Peserta didik dapat membuat model sederhana jaring-jaring makanan dan memprediksi dampak kepunahan suatu organisme."
-            ),
-            defaultKeywords = listOf("sistem organ", "pencernaan", "ekosistem", "rantai makanan", "tata surya", "gaya magnet")
-        ),
-
-        // FASE D - IPA
-        CapaianPembelajaranItem(
-            subject = "Ilmu Pengetahuan Alam (IPA)",
-            fase = "Fase D",
-            elemen = "Pemahaman IPA",
-            capaianText = "Peserta didik mampu melakukan klasifikasi makhluk hidup, memahami struktur sel, sistem organisasi kehidupan, interaksi makhluk hidup dengan lingkungan, sifat fisika dan kimia zat, hukum gerak Newton, usaha dan energi, gelombang, serta struktur bumi dan tata surya.",
-            suggestedTujuan = listOf(
-                "Peserta didik dapat membedakan struktur sel hewan dan sel tumbuhan melalui pengamatan mikroskop/gambar.",
-                "Peserta didik dapat menganalisis penerapan Hukum Newton I, II, dan III dalam fenomena gerak sehari-hari.",
-                "Peserta didik mampu merancang solusi mitigasi pencemaran lingkungan berbasis pemanfaatan bioteknologi ramah lingkungan."
-            ),
-            defaultKeywords = listOf("sel", "hukum newton", "energi", "pencemaran lingkungan", "zat dan perubahan", "kalor", "gelombang")
-        ),
-
-        // FASE D - Bahasa Indonesia
-        CapaianPembelajaranItem(
-            subject = "Bahasa Indonesia",
-            fase = "Fase D",
-            elemen = "Membaca dan Memirsa",
-            capaianText = "Peserta didik mampu mengevaluasi informasi berupa gagasan, pikiran, pandangan, arahan atau pesan dari teks deskripsi, laporan, narasi, eksplanasi, eksposisi dari teks tulis dan visual untuk menemukan makna yang tersurat dan tersirat.",
-            suggestedTujuan = listOf(
-                "Peserta didik mampu mengidentifikasi struktur dan ciri kebahasaan teks prosedur secara tepat.",
-                "Peserta didik mampu menganalisis gagasan utama dan gagasan pendukung dalam teks eksplanasi ilmiah.",
-                "Peserta didik dapat menulis teks deskripsi objek wisata daerah dengan memperhatikan kaidah bahasa Indonesia yang baik."
-            ),
-            defaultKeywords = listOf("teks deskripsi", "teks prosedur", "teks eksplanasi", "gagasan utama", "menulis", "membaca")
-        ),
-
-        // FASE E - Bahasa Indonesia
-        CapaianPembelajaranItem(
-            subject = "Bahasa Indonesia",
-            fase = "Fase E",
-            elemen = "Menulis",
-            capaianText = "Peserta didik mampu menulis gagasan, pikiran, pandangan, arahan atau pesan tertulis untuk berbagai tujuan secara logis, kritis, dan kreatif dalam bentuk teks negosiasi, biografi, anekdot, laporan hasil observasi (LHO), dan puisi.",
-            suggestedTujuan = listOf(
-                "Peserta didik mampu menyusun Laporan Hasil Observasi (LHO) yang objektif berdasarkan fakta lapangan.",
-                "Peserta didik mampu menganalisis struktur dan kaidah kebahasaan teks negosiasi dalam transaksi sosial.",
-                "Peserta didik dapat memproduksi teks anekdot kritis yang santun dan sarat makna sosial."
-            ),
-            defaultKeywords = listOf("lho", "laporan observasi", "negosiasi", "anekdot", "biografi", "menulis kritis")
-        ),
-
-        // FASE E - Pendidikan Pancasila
-        CapaianPembelajaranItem(
-            subject = "Pendidikan Pancasila",
-            fase = "Fase E",
-            elemen = "Pancasila dan UUD NRI 1945",
-            capaianText = "Peserta didik mampu menganalisis cara pandang para pendiri bangsa tentang rumusan Pancasila, mengkaji penerapan nilai-nilai Pancasila dalam kehidupan bermasyarakat dan bernegara, serta menganalisis norma dan hierarki perundang-undangan.",
-            suggestedTujuan = listOf(
-                "Peserta didik mampu menganalisis dinamika kelahiran Pancasila dari sidang BPUPK hingga penetapan PPKI.",
-                "Peserta didik dapat memetakan contoh konkret penerapan nilai keadilan sosial dalam pencegahan intoleransi.",
-                "Peserta didik dapat mengevaluasi kepatuhan terhadap norma hukum di lingkungan sekolah dan masyarakat."
-            ),
-            defaultKeywords = listOf("pancasila", "bpupk", "uud 1945", "norma", "hukum", "hak asasi", "kebinekaan")
-        ),
-
-        // FASE E - Informatika
-        CapaianPembelajaranItem(
-            subject = "Informatika",
-            fase = "Fase E",
-            elemen = "Berpikir Komputasional (BK) & Algoritma",
-            capaianText = "Peserta didik mampu menerapkan strategi algoritmik standar pada kehidupan sehari-hari maupun pemrograman terstruktur, memahami konsep struktur data graf, pohon, serta analisis efisiensi pencarian dan pengurutan.",
-            suggestedTujuan = listOf(
-                "Peserta didik dapat menerapkan 4 pilar berpikir komputasional (dekomposisi, pengenalan pola, abstraksi, algoritma) dalam memecahkan masalah kompleks.",
-                "Peserta didik mampu membuat alur logika program menggunakan flowchart dan pseudocode.",
-                "Peserta didik dapat mengimplementasikan struktur kendali percabangan dan perulangan dalam bahasa pemrograman."
-            ),
-            defaultKeywords = listOf("berpikir komputasional", "algoritma", "flowchart", "pemrograman", "struktur data", "coding")
-        ),
-
-        // FASE F - Matematika
-        CapaianPembelajaranItem(
-            subject = "Matematika",
-            fase = "Fase F",
-            elemen = "Kalkulus & Aljabar",
-            capaianText = "Peserta didik dapat memahami konsep limit fungsi, turunan fungsi aljabar, integral, serta menerapkan matriks dan transformasi geometri dalam pemodelan fenomena nyata.",
-            suggestedTujuan = listOf(
-                "Peserta didik dapat menentukan turunan fungsi aljabar menggunakan konsep limit dan rumus dasar turunan.",
-                "Peserta didik mampu menerapkan turunan pertama untuk menentukan titik stasioner, nilai maksimum, dan minimum dalam masalah optimasi.",
-                "Peserta didik dapat melakukan operasi perkalian matriks dan menentukan determinan serta invers matriks 2x2."
-            ),
-            defaultKeywords = listOf("turunan", "integral", "limit", "matriks", "transformasi geometri", "kalkulus")
-        )
+        // FASE F
+        CapaianPembelajaranItem("Matematika", "Fase F", "Kalkulus", "Konsep limit dan turunan", listOf("Turunan fungsi", "Aplikasi turunan", "Integral"), listOf("turunan", "integral", "limit")),
+        CapaianPembelajaranItem("Bahasa Inggris", "Fase F", "Membaca", "Analisis teks kompleks", listOf("Analytical Exposition", "Discussion Text", "Report Text"), listOf("exposition", "discussion", "report")),
+        CapaianPembelajaranItem("Biologi", "Fase F", "Sains", "Struktur dan fungsi biologis", listOf("Sel dan metabolisme", "Genetika", "Evolusi"), listOf("sel", "genetika", "evolusi")),
+        CapaianPembelajaranItem("Fisika", "Fase F", "Sains", "Mekanika dan gelombang", listOf("Gerak lurus", "Hukum Newton", "Gelombang bunyi"), listOf("mekanika", "newton", "gelombang")),
+        CapaianPembelajaranItem("Kimia", "Fase F", "Sains", "Struktur atom dan reaksi", listOf("Struktur atom", "Termokimia", "Laju reaksi"), listOf("atom", "kimia", "reaksi"))
     )
 
     fun findMatchingCP(subject: String, fase: String, topic: String): CapaianPembelajaranItem? {

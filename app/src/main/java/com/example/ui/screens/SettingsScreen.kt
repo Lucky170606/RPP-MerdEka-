@@ -281,4 +281,3 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
         }
     }
 }
-

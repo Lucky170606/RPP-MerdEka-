@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -63,6 +64,14 @@ fun GeneratorWizardScreen(
 
     val matchedCP = remember(selectedSubject, selectedFase, topic) {
         KurikulumMerdekaReferenceData.findMatchingCP(selectedSubject, selectedFase.code, topic)
+    }
+
+    BackHandler {
+        if (currentStep > 1) {
+            currentStep--
+        } else {
+            viewModel.navigateTo(Screen.Home)
+        }
     }
 
     Scaffold(

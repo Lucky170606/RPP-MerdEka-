@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.ai.GeminiService
+import com.example.data.ai.OfflineAssessmentEngine
 import com.example.data.local.AppDatabase
 import com.example.data.local.ModulAjarEntity
 import com.example.data.local.ModulRepository
@@ -20,6 +21,7 @@ import com.example.data.model.QuickPreset
 import com.example.data.model.ProtaDocument
 import com.example.data.model.PromesDocument
 import com.example.data.model.AtpDocument
+import com.example.data.model.AssessmentDocument
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.flow.*
@@ -195,9 +197,12 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Navigation
+    // Robust Backstack Navigation
     private val prefs = application.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE)
     private val isOnboardingDone = prefs.getBoolean("onboarding_completed", false)
+    private val backStack = java.util.ArrayDeque<Screen>().apply {
+        add(if (isOnboardingDone) Screen.Home else Screen.Onboarding)
+    }
     private val _currentScreen = MutableStateFlow<Screen>(if (isOnboardingDone) Screen.Home else Screen.Onboarding)
     val currentScreen: StateFlow<Screen> = _currentScreen.asStateFlow()
 
@@ -236,12 +241,15 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
 
     val generationState = MutableStateFlow<GenerationState>(GenerationState.Idle)
     val isEnhancingSection = MutableStateFlow(false)
-
-    private var previousScreen: Screen = Screen.Home
+    val isGeneratingAssessment = MutableStateFlow(false)
 
     fun navigateTo(screen: Screen) {
-        if (_currentScreen.value != screen) {
-            previousScreen = _currentScreen.value
+        if (_currentScreen.value == screen) return
+        if (screen is Screen.Home) {
+            backStack.clear()
+            backStack.add(Screen.Home)
+        } else {
+            backStack.addLast(screen)
         }
         _currentScreen.value = screen
         if (screen is Screen.Editor) {
@@ -250,7 +258,16 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun navigateBack() {
-        _currentScreen.value = previousScreen
+        if (backStack.size > 1) {
+            backStack.removeLast()
+            val previous = backStack.lastOrNull() ?: Screen.Home
+            _currentScreen.value = previous
+            if (previous is Screen.Editor) {
+                loadModulById(previous.modulId)
+            }
+        } else {
+            _currentScreen.value = Screen.Home
+        }
     }
 
     fun loadModulById(id: Long) {
@@ -412,6 +429,46 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
             isEnhancingSection.value = false
             result.onSuccess { newText ->
                 onComplete(newText)
+            }
+        }
+    }
+
+    fun generateKisiKisiHotsWithAI(
+        subject: String,
+        fase: String,
+        grade: String,
+        topic: String,
+        jenisAsesmen: String,
+        semester: String,
+        count: Int,
+        onResult: (AssessmentDocument) -> Unit
+    ) {
+        viewModelScope.launch {
+            isGeneratingAssessment.value = true
+            val result = GeminiService.generateKisiKisiHots(
+                context = getApplication(),
+                subject = subject,
+                fase = fase,
+                grade = grade,
+                topic = topic,
+                jenisAsesmen = jenisAsesmen,
+                semester = semester,
+                count = count
+            )
+            isGeneratingAssessment.value = false
+            result.onSuccess { doc ->
+                onResult(doc)
+            }.onFailure {
+                val fallbackDoc = OfflineAssessmentEngine.generateAssessment(
+                    subject = subject,
+                    fase = fase,
+                    grade = grade,
+                    topic = topic,
+                    jenisAsesmen = jenisAsesmen,
+                    semester = semester,
+                    jumlahSoal = count
+                )
+                onResult(fallbackDoc)
             }
         }
     }

@@ -2,17 +2,27 @@ package com.example.data.ai
 
 import android.content.Context
 import android.util.Log
+import com.example.data.model.AssessmentDocument
 import com.example.data.model.GeneratedModulContent
+import com.example.data.model.KisiKisiItem
+import com.example.data.model.SoalHotsItem
 import com.example.util.ApiKeyManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 data class ConnectionTestResult(
     val isSuccess: Boolean,
@@ -25,24 +35,40 @@ data class ConnectionTestResult(
 object GeminiService {
     private const val TAG = "GeminiService"
     
-    val SUPPORTED_MODELS = listOf(
+    val SUPPORTED_MODELS = mutableListOf(
         "gemini-2.5-flash",
         "gemini-3.5-flash",
-        "gemini-3.6-flash",
-        "gemini-3.7-flash",
+        "gemini-3.1-flash-lite-preview",
         "gemini-flash-latest",
-        "gemini-flash"
+        "gemini-3.1-pro-preview"
     )
 
-    @Volatile
     var activeModel: String = "gemini-2.5-flash"
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(25, TimeUnit.SECONDS)
-        .readTimeout(25, TimeUnit.SECONDS)
-        .writeTimeout(25, TimeUnit.SECONDS)
-        .retryOnConnectionFailure(true)
+        .connectTimeout(6, TimeUnit.SECONDS)
+        .readTimeout(12, TimeUnit.SECONDS)
+        .writeTimeout(8, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(false)
         .build()
+
+    private suspend fun Call.awaitResponse(): Response = suspendCancellableCoroutine { continuation ->
+        continuation.invokeOnCancellation {
+            try {
+                cancel()
+            } catch (_: Exception) {}
+        }
+        enqueue(object : Callback {
+            override fun onResponse(call: Call, response: Response) {
+                continuation.resume(response)
+            }
+            override fun onFailure(call: Call, e: IOException) {
+                if (!continuation.isCancelled) {
+                    continuation.resumeWithException(e)
+                }
+            }
+        })
+    }
 
     private fun getEndpoint(model: String): String {
         return "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent"
@@ -53,6 +79,100 @@ object GeminiService {
         list.add(activeModel)
         SUPPORTED_MODELS.forEach { if (it != activeModel) list.add(it) }
         return list
+    }
+
+    fun cleanJson(rawText: String): String {
+        val trimmed = rawText.trim()
+            .removePrefix("```json")
+            .removePrefix("```JSON")
+            .removePrefix("```")
+            .removeSuffix("```")
+            .trim()
+        val firstBrace = trimmed.indexOf('{')
+        val lastBrace = trimmed.lastIndexOf('}')
+        return if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
+            trimmed.substring(firstBrace, lastBrace + 1)
+        } else {
+            trimmed
+        }
+    }
+
+    suspend fun executeWithRetryAndFallback(
+        context: Context,
+        promptText: String,
+        isJsonResponse: Boolean = false,
+        temperature: Double = 0.5
+    ): Result<String> = withContext(Dispatchers.IO) {
+        val apiKey = ApiKeyManager.getApiKey(context)
+        if (apiKey.isNullOrBlank()) {
+            return@withContext Result.failure(java.io.IOException("API Key Gemini belum terpasang."))
+        }
+
+        val jsonRequest = JSONObject().apply {
+            val contentsArray = JSONArray().apply {
+                val contentObj = JSONObject().apply {
+                    val partsArray = JSONArray().apply {
+                        val partObj = JSONObject().apply {
+                            put("text", promptText)
+                        }
+                        put(partObj)
+                    }
+                    put("parts", partsArray)
+                }
+                put(contentObj)
+            }
+            put("contents", contentsArray)
+
+            val generationConfig = JSONObject().apply {
+                put("temperature", temperature)
+                if (isJsonResponse) {
+                    put("responseMimeType", "application/json")
+                }
+            }
+            put("generationConfig", generationConfig)
+        }
+
+        val requestBody = jsonRequest.toString().toRequestBody("application/json".toMediaType())
+
+        var lastException: Exception? = null
+
+        for (model in getPrioritizedModels().take(2)) {
+            try {
+                val request = Request.Builder()
+                    .url(getEndpoint(model))
+                    .header("x-goog-api-key", apiKey)
+                    .header("Content-Type", "application/json")
+                    .post(requestBody)
+                    .build()
+
+                val response = client.newCall(request).awaitResponse()
+                val responseBody = response.body?.string() ?: ""
+
+                if (response.isSuccessful && responseBody.isNotBlank()) {
+                    val parsedJson = JSONObject(responseBody)
+                    val candidates = parsedJson.optJSONArray("candidates")
+                    val textOutput = candidates?.optJSONObject(0)
+                        ?.optJSONObject("content")
+                        ?.optJSONArray("parts")
+                        ?.optJSONObject(0)
+                        ?.optString("text")
+
+                    if (!textOutput.isNullOrBlank()) {
+                        activeModel = model
+                        return@withContext Result.success(textOutput.trim())
+                    }
+                } else {
+                    val httpCode = response.code
+                    Log.w(TAG, "Model $model returned HTTP $httpCode: $responseBody")
+                    lastException = java.io.IOException("HTTP $httpCode: $responseBody")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Model $model network error: ${e.message}")
+                lastException = e
+            }
+        }
+
+        Result.failure(lastException ?: java.io.IOException("Gagal menghubungi seluruh model Gemini AI."))
     }
 
     suspend fun testConnection(context: Context, customKey: String? = null): ConnectionTestResult = withContext(Dispatchers.IO) {
@@ -88,7 +208,7 @@ object GeminiService {
         var lastErrorDetail: String? = null
         var lastModelAttempted: String? = null
 
-        for (model in getPrioritizedModels()) {
+        for (model in getPrioritizedModels().take(2)) {
             lastModelAttempted = model
             try {
                 val request = Request.Builder()
@@ -98,7 +218,7 @@ object GeminiService {
                     .post(requestBody)
                     .build()
 
-                val response = client.newCall(request).execute()
+                val response = client.newCall(request).awaitResponse()
                 lastHttpCode = response.code
                 val bodyString = response.body?.string() ?: ""
 
@@ -235,55 +355,9 @@ object GeminiService {
         }
 
         try {
-            val jsonRequest = JSONObject().apply {
-                val contentsArray = JSONArray().apply {
-                    val contentObj = JSONObject().apply {
-                        val partsArray = JSONArray().apply {
-                            val partObj = JSONObject().apply {
-                                put("text", systemPrompt)
-                            }
-                            put(partObj)
-                        }
-                        put("parts", partsArray)
-                    }
-                    put(contentObj)
-                }
-                put("contents", contentsArray)
-                
-                val generationConfig = JSONObject().apply {
-                    put("temperature", 0.7)
-                    put("responseMimeType", "application/json")
-                }
-                put("generationConfig", generationConfig)
-            }
-
-            val requestBody = jsonRequest.toString().toRequestBody("application/json".toMediaType())
-            
-            var responseBody: String? = null
-
-            for (model in getPrioritizedModels()) {
-                try {
-                    val request = Request.Builder()
-                        .url(getEndpoint(model))
-                        .header("x-goog-api-key", apiKey)
-                        .header("Content-Type", "application/json")
-                        .post(requestBody)
-                        .build()
-
-                    val response = client.newCall(request).execute()
-                    val body = response.body?.string() ?: ""
-                    if (response.isSuccessful && body.isNotBlank()) {
-                        activeModel = model
-                        responseBody = body
-                        break
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Model $model attempt failed: ${e.message}")
-                }
-            }
-
-            if (responseBody == null) {
-                Log.e(TAG, "All models failed, falling back to offline engine")
+            val executionResult = executeWithRetryAndFallback(context, systemPrompt, isJsonResponse = true, temperature = 0.6)
+            if (executionResult.isFailure) {
+                Log.e(TAG, "All models failed, falling back to offline engine: ${executionResult.exceptionOrNull()?.message}")
                 val offlineResult = OfflineCurriculumEngine.generateCompleteModul(
                     teacherName, schoolName, fase, grade, subject, topic, timeAllocation,
                     semester, academicYear, modelName, selectedDimensi, targetGayaBelajar,
@@ -292,18 +366,8 @@ object GeminiService {
                 return@withContext Result.success(offlineResult)
             }
 
-            val parsedJson = JSONObject(responseBody)
-            val candidates = parsedJson.optJSONArray("candidates")
-            val firstCandidate = candidates?.optJSONObject(0)
-            val content = firstCandidate?.optJSONObject("content")
-            val parts = content?.optJSONArray("parts")
-            val textOutput = parts?.optJSONObject(0)?.optString("text") ?: ""
-
-            val cleanedJsonText = textOutput.trim()
-                .removePrefix("```json")
-                .removePrefix("```")
-                .removeSuffix("```")
-                .trim()
+            val textOutput = executionResult.getOrThrow()
+            val cleanedJsonText = cleanJson(textOutput)
 
             val modulJson = JSONObject(cleanedJsonText)
 
@@ -405,52 +469,9 @@ object GeminiService {
                 Tuliskan kembali atau kembangkan isi bagian ini secara terstruktur, profesional, dan siap cetak sesuai kaidah Kurikulum Merdeka. Tuliskan teks hasilnya secara langsung tanpa pembuka/penutup basa-basi.
             """.trimIndent()
 
-            val jsonRequest = JSONObject().apply {
-                val contentsArray = JSONArray().apply {
-                    val contentObj = JSONObject().apply {
-                        val partsArray = JSONArray().apply {
-                            val partObj = JSONObject().apply {
-                                put("text", prompt)
-                            }
-                            put(partObj)
-                        }
-                        put("parts", partsArray)
-                    }
-                    put(contentObj)
-                }
-                put("contents", contentsArray)
-                val generationConfig = JSONObject().apply {
-                    put("temperature", 0.7)
-                }
-                put("generationConfig", generationConfig)
-            }
-
-            val requestBody = jsonRequest.toString().toRequestBody("application/json".toMediaType())
-
-            for (model in getPrioritizedModels()) {
-                try {
-                    val request = Request.Builder()
-                        .url(getEndpoint(model))
-                        .header("x-goog-api-key", apiKey)
-                        .header("Content-Type", "application/json")
-                        .post(requestBody)
-                        .build()
-
-                    val response = client.newCall(request).execute()
-                    val responseBody = response.body?.string() ?: ""
-
-                    if (response.isSuccessful && responseBody.isNotBlank()) {
-                        val parsedJson = JSONObject(responseBody)
-                        val candidates = parsedJson.optJSONArray("candidates")
-                        val textOutput = candidates?.optJSONObject(0)?.optJSONObject("content")?.optJSONArray("parts")?.optJSONObject(0)?.optString("text")
-                        if (!textOutput.isNullOrBlank()) {
-                            activeModel = model
-                            return@withContext Result.success(textOutput.trim())
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Improve section with $model failed: ${e.message}")
-                }
+            val result = executeWithRetryAndFallback(context, prompt, isJsonResponse = false, temperature = 0.7)
+            if (result.isSuccess) {
+                return@withContext result
             }
 
             Result.success("$currentContent\n\n[Diperbarui]: Dilengkapi strategi tambahan sesuai instruksi $instruction")
@@ -466,59 +487,216 @@ object GeminiService {
     }
 
     suspend fun generateText(context: Context, promptText: String): String = withContext(Dispatchers.IO) {
+        val result = executeWithRetryAndFallback(context, promptText, isJsonResponse = false)
+        result.getOrThrow()
+    }
+
+    suspend fun generateKisiKisiHots(
+        context: Context,
+        subject: String,
+        fase: String,
+        grade: String,
+        topic: String,
+        jenisAsesmen: String,
+        semester: String,
+        count: Int
+    ): Result<AssessmentDocument> = withContext(Dispatchers.IO) {
         val apiKey = ApiKeyManager.getApiKey(context)
         if (apiKey.isNullOrBlank()) {
-            throw java.io.IOException("API Key belum terpasang.")
+            Log.w(TAG, "GEMINI_API_KEY is not configured, fallback to high-quality OfflineAssessmentEngine")
+            val offlineDoc = OfflineAssessmentEngine.generateAssessment(
+                subject = subject,
+                fase = fase,
+                grade = grade,
+                topic = topic,
+                jenisAsesmen = jenisAsesmen,
+                semester = semester,
+                jumlahSoal = count
+            )
+            return@withContext Result.success(offlineDoc)
         }
 
-        val jsonRequest = JSONObject().apply {
-            val contentsArray = JSONArray().apply {
-                val contentObj = JSONObject().apply {
-                    val partsArray = JSONArray().apply {
-                        val partObj = JSONObject().apply {
-                            put("text", promptText)
+        val prompt = """
+            Anda adalah Pakar Asesmen Pendidikan Kurikulum Merdeka Kemendikbudristek RI dan Spesialis Butir Soal Berorientasi HOTS (Higher Order Thinking Skills - Level Kognitif C4 Menganalisis, C5 Mengevaluasi, C6 Mencipta).
+            Tugas Anda adalah menyusun Dokumen Kisi-Kisi dan Bank Soal HOTS yang lengkap, operasional, berbobot ilmiah/pedagogis tinggi, dan kontekstual.
+
+            Spesifikasi Input:
+            - Mata Pelajaran: $subject
+            - Fase / Kelas: $fase ($grade)
+            - Semester: $semester
+            - Topik / Materi Pokok: $topic
+            - Jenis Asesmen: $jenisAsesmen
+            - Jumlah Soal yang Disusun: $count butir
+
+            Aturan Penyusunan Soal HOTS:
+            1. Setiap soal wajib memiliki stimulus naratif/kontekstual yang jelas (misalnya: narasi fenomena alam/sosial, studi kasus, data pengamatan/tabel, atau dilema masalah kontekstual).
+            2. Pertanyaan harus menuntut penalaran tingkat tinggi (analisis, evaluasi solusi, prediksi dampak, pemecahan masalah kritis).
+            3. Komposisi: Mayoritas Pilihan Ganda (PG) dengan 4 opsi pilihan (A, B, C, D) yang distraktif dan logis, dan sisanya Uraian Analisis Kasus dengan rubrik penskoran.
+            4. Kunci jawaban dan pembahasan rasional terperinci.
+            5. DUKUNGAN RUMUS & SIMBOL (Sains/Matematika/Fisika/Kimia): Jika materi berkaitan dengan matematika, fisika, atau kimia, tuliskan rumus/persamaan secara jelas menggunakan simbol Unicode (misal: x², H₂O, Δt, √x, ±, α, β, π, ρ, λ, ∫) atau format LaTeX standar dalam kurung dolar seperti ${'$'}f(x) = ax^2 + bx + c${'$'} atau ${'$'}\text{CaCO}_3 + 2\text{HCl} \rightarrow \text{CaCl}_2 + \text{H}_2\text{O} + \text{CO}_2${'$'} agar dapat ter-render rapi dan presisi.
+
+            Harap berikan respons HANYA dalam bentuk JSON murni tanpa markdown wrapper (langsung buka kurung kurawal) dengan format struktur berikut:
+            {
+              "title": "Kisi-Kisi & Bank Soal Asesmen: $subject - $topic",
+              "pedomanPenskoran": "Pedoman penskoran dan Kriteria Ketercapaian Tujuan Pembelajaran (KKTP)...",
+              "kisiKisi": [
+                {
+                  "nomorUrut": 1,
+                  "capaianElemen": "Elemen Capaian Pembelajaran",
+                  "materiPokok": "Sub-materi terkait $topic",
+                  "indikatorSoal": "Disajikan ..., peserta didik dapat ...",
+                  "levelKognitif": "C4 (Menganalisis)",
+                  "bentukSoal": "Pilihan Ganda (PG)",
+                  "nomorSoal": 1
+                }
+              ],
+              "soalList": [
+                {
+                  "nomor": 1,
+                  "bentukSoal": "Pilihan Ganda",
+                  "levelKognitif": "C4 (Menganalisis)",
+                  "stimulusText": "Teks stimulus naratif kontekstual...",
+                  "pertanyaan": "Kalimat pertanyaan HOTS...",
+                  "pilihanOpsi": [
+                    "A. Opsi jawaban A",
+                    "B. Opsi jawaban B",
+                    "C. Opsi jawaban C",
+                    "D. Opsi jawaban D"
+                  ],
+                  "kunciJawaban": "A",
+                  "pembahasanDanAlasan": "Penjelasan mengapa jawaban tersebut tepat secara konsep...",
+                  "skorMaksimal": 10
+                }
+              ]
+            }
+        """.trimIndent()
+
+        try {
+            val executionResult = executeWithRetryAndFallback(context, prompt, isJsonResponse = true, temperature = 0.4)
+            val textOutput = executionResult.getOrThrow()
+            val cleanJsonString = cleanJson(textOutput)
+
+            val jsonObject = JSONObject(cleanJsonString)
+            val docTitle = jsonObject.optString("title", "Kisi-Kisi & Bank Soal Asesmen: $subject - $topic")
+            val pedoman = jsonObject.optString(
+                "pedomanPenskoran",
+                """
+                PEDOMAN PENSKORAN & PENILAIAN NILAI AKHIR (NA):
+                1. Nilai Soal Pilihan Ganda = (Jumlah Benar / Jumlah Soal PG) x 100
+                2. Nilai Soal Uraian = (Total Skor Perolehan Uraian / Total Skor Maksimal Uraian) x 100
+                3. Nilai Akhir (NA) = (60% x Nilai PG) + (40% x Nilai Uraian)
+                
+                Kriteria Ketercapaian Tujuan Pembelajaran (KKTP):
+                • 0 - 65%   : Belum Mencapai TP (Perlu Remedial di seluruh materi)
+                • 66 - 75%  : Cukup Mencapai TP (Perlu Remedial di indikator yang belum tuntas)
+                • 76 - 88%  : Sudah Mencapai TP (Tuntas)
+                • 89 - 100% : Sangat Mahir Mencapai TP (Diberikan Pengayaan/Tantangan HOTS Lanjut)
+                """.trimIndent()
+            )
+
+            val parsedKisiKisi = mutableListOf<KisiKisiItem>()
+            val kisiArray = jsonObject.optJSONArray("kisiKisi") ?: JSONArray()
+            for (i in 0 until kisiArray.length()) {
+                val item = kisiArray.getJSONObject(i)
+                parsedKisiKisi.add(
+                    KisiKisiItem(
+                        nomorUrut = item.optInt("nomorUrut", item.optInt("no", i + 1)),
+                        capaianElemen = item.optString("capaianElemen", "Pemahaman Konseptual $subject"),
+                        materiPokok = item.optString("materiPokok", topic),
+                        indikatorSoal = item.optString("indikatorSoal", item.optString("indikator", "Menganalisis permasalahan terkait $topic")),
+                        levelKognitif = item.optString("levelKognitif", "C4 (Menganalisis)"),
+                        bentukSoal = item.optString("bentukSoal", if (i < (count * 0.6).toInt().coerceAtLeast(1)) "Pilihan Ganda (PG)" else "Uraian Analisis Kasus"),
+                        nomorSoal = item.optInt("nomorSoal", item.optInt("no", i + 1))
+                    )
+                )
+            }
+
+            val parsedSoal = mutableListOf<SoalHotsItem>()
+            val soalArray = jsonObject.optJSONArray("soalList") ?: jsonObject.optJSONArray("soalHots") ?: JSONArray()
+            for (i in 0 until soalArray.length()) {
+                val item = soalArray.getJSONObject(i)
+                val opsiList = mutableListOf<String>()
+                val optArray = item.optJSONArray("pilihanOpsi") ?: item.optJSONArray("pilihanJawaban")
+                if (optArray != null) {
+                    for (j in 0 until optArray.length()) {
+                        opsiList.add(optArray.getString(j))
+                    }
+                }
+
+                val bentuk = item.optString(
+                    "bentukSoal",
+                    if (opsiList.isNotEmpty()) "Pilihan Ganda" else "Uraian Analisis Kasus"
+                )
+
+                parsedSoal.add(
+                    SoalHotsItem(
+                        nomor = item.optInt("nomor", item.optInt("no", i + 1)),
+                        bentukSoal = bentuk,
+                        levelKognitif = item.optString("levelKognitif", "C4 (Menganalisis)"),
+                        stimulusText = item.optString("stimulusText", "Konteks Permasalahan / Stimulus: $topic"),
+                        pertanyaan = item.optString("pertanyaan", "Pertanyaan terkait penerapan materi $topic."),
+                        pilihanOpsi = opsiList,
+                        kunciJawaban = item.optString("kunciJawaban", "A"),
+                        pembahasanDanAlasan = item.optString("pembahasanDanAlasan", "Pembahasan jawaban berdasarkan analisis konsep materi $topic."),
+                        skorMaksimal = item.optInt("skorMaksimal", if (opsiList.isNotEmpty()) 10 else 20)
+                    )
+                )
+            }
+
+            if (parsedSoal.isNotEmpty()) {
+                val doc = AssessmentDocument(
+                    title = docTitle,
+                    subject = subject,
+                    fase = fase,
+                    grade = grade,
+                    semester = semester,
+                    topikUjian = topic,
+                    jenisAsesmen = jenisAsesmen,
+                    jumlahSoal = parsedSoal.size,
+                    kisiKisiList = if (parsedKisiKisi.isNotEmpty()) parsedKisiKisi else {
+                        parsedSoal.mapIndexed { idx, s ->
+                            KisiKisiItem(
+                                nomorUrut = idx + 1,
+                                capaianElemen = "Pemahaman & Penerapan $subject",
+                                materiPokok = topic,
+                                indikatorSoal = "Disajikan stimulus, peserta didik mampu menyelesaikan persoalan tingkat ${s.levelKognitif}",
+                                levelKognitif = s.levelKognitif,
+                                bentukSoal = s.bentukSoal,
+                                nomorSoal = s.nomor
+                            )
                         }
-                        put(partObj)
-                    }
-                    put("parts", partsArray)
-                }
-                put(contentObj)
+                    },
+                    soalList = parsedSoal,
+                    pedomanPenskoran = pedoman,
+                    isOnlineAiGenerated = true,
+                    engineName = "Gemini AI (Online - $activeModel)"
+                )
+                return@withContext Result.success(doc)
+            } else {
+                Log.w(TAG, "Empty soal list parsed from Gemini JSON, falling back to offline engine")
+                val offlineDoc = OfflineAssessmentEngine.generateAssessment(
+                    subject = subject,
+                    fase = fase,
+                    grade = grade,
+                    topic = topic,
+                    jenisAsesmen = jenisAsesmen,
+                    semester = semester,
+                    jumlahSoal = count
+                )
+                return@withContext Result.success(offlineDoc)
             }
-            put("contents", contentsArray)
+        } catch (e: Exception) {
+            Log.e(TAG, "Gemini assessment generation failed: ${e.message}, falling back to offline engine", e)
+            val offlineDoc = OfflineAssessmentEngine.generateAssessment(
+                subject = subject,
+                fase = fase,
+                grade = grade,
+                topic = topic,
+                jenisAsesmen = jenisAsesmen,
+                semester = semester,
+                jumlahSoal = count
+            )
+            return@withContext Result.success(offlineDoc)
         }
-
-        val requestBody = jsonRequest.toString().toRequestBody("application/json".toMediaType())
-
-        var lastException: Exception? = null
-        for (model in getPrioritizedModels()) {
-            try {
-                val request = Request.Builder()
-                    .url(getEndpoint(model))
-                    .header("x-goog-api-key", apiKey)
-                    .header("Content-Type", "application/json")
-                    .post(requestBody)
-                    .build()
-
-                val response = client.newCall(request).execute()
-                val responseBody = response.body?.string() ?: ""
-
-                if (response.isSuccessful && responseBody.isNotBlank()) {
-                    val parsedJson = JSONObject(responseBody)
-                    val candidates = parsedJson.optJSONArray("candidates")
-                    val textOutput = candidates?.optJSONObject(0)?.optJSONObject("content")?.optJSONArray("parts")?.optJSONObject(0)?.optString("text")
-                    if (!textOutput.isNullOrBlank()) {
-                        activeModel = model
-                        return@withContext textOutput.trim()
-                    }
-                } else {
-                    lastException = java.io.IOException("HTTP ${response.code}: $responseBody")
-                }
-            } catch (e: Exception) {
-                lastException = e
-            }
-        }
-
-        throw lastException ?: java.io.IOException("Gagal menghubungi model Gemini")
     }
 }
-

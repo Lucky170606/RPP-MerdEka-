@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextOverflow
 import com.example.data.ai.AdvancedCurriculumEngine
 import com.example.data.local.AtpEntity
 import com.example.data.model.AtpDocument
@@ -80,14 +81,17 @@ fun AtpScreen(
                 title = {
                     Column {
                         Text(
-                            "Alur Tujuan Pembelajaran",
+                            "ATP",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp
+                            fontSize = 17.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            "Bagan ATP & Pemetaan Elemen CP",
+                            "Pemetaan Elemen CP",
                             fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 },

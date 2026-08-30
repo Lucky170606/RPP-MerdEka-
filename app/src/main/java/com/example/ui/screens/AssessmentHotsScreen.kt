@@ -21,9 +21,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.ai.GeminiService
 import com.example.data.ai.OfflineAssessmentEngine
 import com.example.data.model.AssessmentDocument
 import com.example.data.model.Fase
+import com.example.data.model.KurikulumMerdekaReferenceData
 import com.example.data.model.TeacherProfile
 import com.example.ui.components.AppHeader
 import com.example.ui.components.BadgeChip
@@ -32,6 +35,7 @@ import com.example.ui.theme.*
 import com.example.ui.viewmodel.ModulViewModel
 import com.example.ui.viewmodel.Screen
 import com.example.util.DocumentExporter
+import com.example.util.MathSymbolFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,9 +51,12 @@ fun AssessmentHotsScreen(
     var jumlahSoal by remember { mutableStateOf(5) }
 
     var assessmentDoc by remember { mutableStateOf<AssessmentDocument?>(null) }
+    val isAiOnline = remember { GeminiService.isAvailable(context) }
 
-    val subjects = listOf("Matematika", "IPAS", "Bahasa Indonesia", "Pendidikan Pancasila", "Informatika", "Bahasa Inggris")
-    val jenisList = listOf("Asesmen Sumatif Akhir Bab", "Sumatif Tengah Semester (STS)", "Sumatif Akhir Semester (SAS)")
+    val subjects = remember(selectedFase) { KurikulumMerdekaReferenceData.getSubjectsForFase(selectedFase.code) }
+    val jenisList = KurikulumMerdekaReferenceData.JENIS_ASESMEN_LIST
+    val availableTopics = remember(selectedSubject, selectedFase) { KurikulumMerdekaReferenceData.getTopicsForSubjectAndFase(selectedSubject, selectedFase.code) }
+    var expandedTopic by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -68,6 +75,78 @@ fun AssessmentHotsScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            // Indikator Status AI (Online vs Offline)
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth().testTag("ai_status_indicator_card"),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isAiOnline) 
+                            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.45f)
+                        else 
+                            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f)
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (isAiOnline) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f)
+                        else MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (isAiOnline) MaterialTheme.colorScheme.tertiary
+                                    else MaterialTheme.colorScheme.secondary
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (isAiOnline) Icons.Default.AutoAwesome else Icons.Default.Storage,
+                                contentDescription = null,
+                                tint = if (isAiOnline) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSecondary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = if (isAiOnline) "AI Online Aktif (Gemini AI)" else "Mode Offline Standar Kurikulum",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isAiOnline) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                BadgeChip(
+                                    text = if (isAiOnline) "ONLINE" else "OFFLINE",
+                                    backgroundColor = if (isAiOnline) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary,
+                                    textColor = if (isAiOnline) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSecondary
+                                )
+                            }
+                            Text(
+                                text = if (isAiOnline) 
+                                    "Penyusunan butir soal HOTS otomatis dengan stimulus kontekstual & penalaran mendalam berbasis Google Gemini AI."
+                                else 
+                                    "Penyusunan instrumen soal berbasis bank kisi-kisi dan formula kurikulum lokal tanpa koneksi internet.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
             // Form Parameter Asesmen
             item {
                 Card(
@@ -87,7 +166,7 @@ fun AssessmentHotsScreen(
                             items(subjects) { sub ->
                                 FilterChip(
                                     selected = selectedSubject == sub,
-                                    onClick = { selectedSubject = sub },
+                                    onClick = { selectedSubject = sub; materiTopik = "" },
                                     label = { Text(sub) }
                                 )
                             }
@@ -98,18 +177,45 @@ fun AssessmentHotsScreen(
                             items(Fase.values()) { f ->
                                 FilterChip(
                                     selected = selectedFase == f,
-                                    onClick = { selectedFase = f },
+                                    onClick = { selectedFase = f; materiTopik = "" },
                                     label = { Text(f.code) }
                                 )
                             }
                         }
 
-                        OutlinedTextField(
-                            value = materiTopik,
-                            onValueChange = { materiTopik = it },
-                            label = { Text("Topik / Materi Ujian") },
-                            modifier = Modifier.fillMaxWidth().testTag("input_assessment_topic")
-                        )
+                        // Topik Dropdown
+                        val showDropdown = availableTopics.isNotEmpty()
+                        ExposedDropdownMenuBox(
+                            expanded = if (showDropdown) expandedTopic else false,
+                            onExpandedChange = { if (showDropdown) expandedTopic = !expandedTopic }
+                        ) {
+                            OutlinedTextField(
+                                value = materiTopik,
+                                onValueChange = { materiTopik = it },
+                                label = { Text("Topik / Materi Ujian") },
+                                trailingIcon = if (showDropdown) { { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedTopic) } } else null,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
+                                    .testTag("input_assessment_topic")
+                            )
+                            if (showDropdown) {
+                                ExposedDropdownMenu(
+                                    expanded = expandedTopic,
+                                    onDismissRequest = { expandedTopic = false }
+                                ) {
+                                    availableTopics.forEach { topic ->
+                                        DropdownMenuItem(
+                                            text = { Text(topic) },
+                                            onClick = {
+                                                materiTopik = topic
+                                                expandedTopic = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
 
                         Text("Jenis Asesmen:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -122,56 +228,75 @@ fun AssessmentHotsScreen(
                             }
                         }
 
-                        // Jumlah Soal Slider/Selector
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("Jumlah Butir Soal: $jumlahSoal Soal", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                listOf(3, 5, 8, 10).forEach { num ->
-                                    FilterChip(
-                                        selected = jumlahSoal == num,
-                                        onClick = { jumlahSoal = num },
-                                        label = { Text("$num") }
-                                    )
-                                }
-                            }
-                        }
+                        // Jumlah Soal Slider
+                        Text("Jumlah Butir Soal: ${jumlahSoal.toInt()} Soal", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        Slider(
+                            value = jumlahSoal.toFloat(),
+                            onValueChange = { jumlahSoal = it.toInt() },
+                            valueRange = 5f..20f,
+                            steps = 3,
+                            modifier = Modifier.fillMaxWidth().testTag("slider_jumlah_soal")
+                        )
                     }
                 }
             }
 
-            // Tombol Generate Soal
+            // Tombol Generate Soal (Terkoneksi Langsung ke Gemini AI)
             item {
+                val isGenerating by viewModel.isGeneratingAssessment.collectAsStateWithLifecycle()
+                val profile = remember { TeacherProfile.loadFromPreferences(context) }
+                val targetGrade = selectedFase.grades.firstOrNull() ?: "Kelas X"
+                val targetSemester = profile.defaultSemester.ifBlank { "Semester 1 (Ganjil)" }
+
                 Button(
                     onClick = {
-                        val profile = TeacherProfile.loadFromPreferences(context)
-                        assessmentDoc = OfflineAssessmentEngine.generateAssessment(
+                        viewModel.generateKisiKisiHotsWithAI(
                             subject = selectedSubject,
                             fase = selectedFase.code,
-                            grade = selectedFase.grades.first(),
-                            topic = materiTopik.ifBlank { "Materi Pokok" },
+                            grade = targetGrade,
+                            topic = materiTopik.ifBlank { "Materi Pokok Esensial" },
                             jenisAsesmen = jenisAsesmen,
-                            semester = profile.defaultSemester,
-                            jumlahSoal = jumlahSoal
-                        )
-                        Toast.makeText(context, "Kisi-Kisi & Soal HOTS Berhasil Dibuat!", Toast.LENGTH_SHORT).show()
+                            semester = targetSemester,
+                            count = jumlahSoal.toInt()
+                        ) { doc ->
+                            assessmentDoc = doc
+                            val sourceMsg = if (doc.isOnlineAiGenerated) "Gemini AI" else "Offline Engine"
+                            Toast.makeText(context, "Kisi-Kisi & Soal HOTS Berhasil Disusun via $sourceMsg!", Toast.LENGTH_SHORT).show()
+                        }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp)
+                        .height(52.dp)
                         .testTag("btn_generate_assessment"),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                    ),
+                    enabled = !isGenerating
                 ) {
-                    Icon(Icons.Default.AutoFixHigh, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Susun Kisi-Kisi & Soal HOTS Otomatis", fontWeight = FontWeight.Bold)
+                    if (isGenerating) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(22.dp),
+                            strokeWidth = 2.5.dp
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            if (isAiOnline) "Gemini AI Menyusun Kisi-Kisi & Soal HOTS..." else "Engine Menyusun Kisi-Kisi & Soal HOTS...",
+                            fontWeight = FontWeight.Bold
+                        )
+                    } else {
+                        Icon(
+                            imageVector = if (isAiOnline) Icons.Default.AutoAwesome else Icons.Default.AutoFixHigh,
+                            contentDescription = null
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            if (isAiOnline) "Susun Kisi-Kisi & Soal HOTS (Gemini AI)" else "Susun Kisi-Kisi & Soal HOTS (Offline Engine)",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
 
@@ -179,15 +304,60 @@ fun AssessmentHotsScreen(
             assessmentDoc?.let { doc ->
                 item {
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().testTag("result_assessment_card"),
                         shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
                     ) {
                         Column(
                             modifier = Modifier.padding(14.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
+                            // Header Banner Asal Sumber Generasi (AI Online vs Offline Engine)
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (doc.isOnlineAiGenerated)
+                                        MaterialTheme.colorScheme.tertiaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.secondaryContainer
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (doc.isOnlineAiGenerated) Icons.Default.AutoAwesome else Icons.Default.Storage,
+                                        contentDescription = null,
+                                        tint = if (doc.isOnlineAiGenerated) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = if (doc.isOnlineAiGenerated) "Hasil Generasi: Google Gemini AI (Online)" else "Hasil Generasi: Standar Kurikulum Merdeka (Offline Engine)",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.sp,
+                                            color = if (doc.isOnlineAiGenerated) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
+                                        Text(
+                                            text = "Mesin: ${doc.engineName}",
+                                            fontSize = 11.sp,
+                                            color = if (doc.isOnlineAiGenerated) MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                                        )
+                                    }
+                                    BadgeChip(
+                                        text = if (doc.isOnlineAiGenerated) "AI ONLINE" else "OFFLINE",
+                                        backgroundColor = if (doc.isOnlineAiGenerated) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary,
+                                        textColor = if (doc.isOnlineAiGenerated) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSecondary
+                                    )
+                                }
+                            }
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -196,9 +366,11 @@ fun AssessmentHotsScreen(
                                 Text(
                                     doc.title,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    fontSize = 14.sp
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontSize = 14.sp,
+                                    modifier = Modifier.weight(1f)
                                 )
+                                Spacer(modifier = Modifier.width(8.dp))
                                 BadgeChip(
                                     text = "${doc.jumlahSoal} Soal",
                                     backgroundColor = MaterialTheme.colorScheme.primary,
@@ -287,7 +459,7 @@ fun AssessmentHotsScreen(
                                 }
                             }
                             Text(
-                                "Indikator: ${k.indikatorSoal}",
+                                "Indikator: ${MathSymbolFormatter.formatMathText(k.indikatorSoal)}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -334,7 +506,7 @@ fun AssessmentHotsScreen(
                                 shape = RoundedCornerShape(6.dp)
                             ) {
                                 Text(
-                                    text = s.stimulusText,
+                                    text = MathSymbolFormatter.formatMathText(s.stimulusText),
                                     style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
                                     modifier = Modifier.padding(8.dp),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -343,7 +515,7 @@ fun AssessmentHotsScreen(
 
                             // Pertanyaan
                             Text(
-                                s.pertanyaan,
+                                MathSymbolFormatter.formatMathText(s.pertanyaan),
                                 fontWeight = FontWeight.SemiBold,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -354,7 +526,7 @@ fun AssessmentHotsScreen(
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     s.pilihanOpsi.forEach { opt ->
                                         Text(
-                                            opt,
+                                            MathSymbolFormatter.formatMathText(opt),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -376,13 +548,13 @@ fun AssessmentHotsScreen(
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Text(
-                                    "Kunci Jawaban: ${s.kunciJawaban}",
+                                    "Kunci Jawaban: ${MathSymbolFormatter.formatMathText(s.kunciJawaban)}",
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                                     fontSize = 12.sp
                                 )
                                 Text(
-                                    "Pembahasan: ${s.pembahasanDanAlasan}",
+                                    "Pembahasan: ${MathSymbolFormatter.formatMathText(s.pembahasanDanAlasan)}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

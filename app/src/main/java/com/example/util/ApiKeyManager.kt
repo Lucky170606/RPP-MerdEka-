@@ -31,6 +31,10 @@ object ApiKeyManager {
         }
     }
 
+    private fun getFallbackPreferences(context: Context): SharedPreferences {
+        return context.getSharedPreferences(FALLBACK_PREF_NAME, Context.MODE_PRIVATE)
+    }
+
     private fun sanitizeKey(key: String?): String? {
         if (key.isNullOrBlank()) return null
         val clean = key.trim().trim('"', '\'', '`', '\n', '\r', '\t', ' ')
@@ -44,7 +48,7 @@ object ApiKeyManager {
 
         // Also save to standard fallback in case encrypted prefs fail on next boot
         try {
-            val fallbackPrefs = context.getSharedPreferences(FALLBACK_PREF_NAME, Context.MODE_PRIVATE)
+            val fallbackPrefs = getFallbackPreferences(context)
             fallbackPrefs.edit().putString(KEY_API_KEY, cleanKey).apply()
         } catch (e: Exception) {
             Log.e(TAG, "Error saving fallback prefs", e)
@@ -56,7 +60,7 @@ object ApiKeyManager {
             getSharedPreferences(context).edit().remove(KEY_API_KEY).apply()
         } catch (_: Exception) {}
         try {
-            context.getSharedPreferences(FALLBACK_PREF_NAME, Context.MODE_PRIVATE).edit().remove(KEY_API_KEY).apply()
+            getFallbackPreferences(context).edit().remove(KEY_API_KEY).apply()
         } catch (_: Exception) {}
     }
 
@@ -64,11 +68,11 @@ object ApiKeyManager {
         val userKey = try {
             val primary = getSharedPreferences(context).getString(KEY_API_KEY, null)
             if (!primary.isNullOrBlank()) primary else {
-                context.getSharedPreferences(FALLBACK_PREF_NAME, Context.MODE_PRIVATE).getString(KEY_API_KEY, null)
+                getFallbackPreferences(context).getString(KEY_API_KEY, null)
             }
         } catch (e: Exception) {
             try {
-                context.getSharedPreferences(FALLBACK_PREF_NAME, Context.MODE_PRIVATE).getString(KEY_API_KEY, null)
+                getFallbackPreferences(context).getString(KEY_API_KEY, null)
             } catch (_: Exception) {
                 null
             }

@@ -20,36 +20,8 @@ object OfflineAssessmentEngine {
         val kisiList = mutableListOf<KisiKisiItem>()
         val soalList = mutableListOf<SoalHotsItem>()
 
-        val levelKognitifList = listOf("C4 (Menganalisis)", "C5 (Mengevaluasi)", "C3 (Menerapkan)", "C4 (Menganalisis)", "C6 (Mencipta/Merancang)", "C2 (Memahami)", "C3 (Menerapkan)", "C5 (Mengevaluasi)", "C4 (Menganalisis)", "C6 (Mencipta/Merancang)")
-
-        // Contextual scenario templates to ensure questions are rich and non-repetitive
-        val scenarios = listOf(
-            Triple(
-                "Studi Kasus Kontekstual A (Praktik Lapangan):",
-                "Dalam kegiatan observasi lapangan mengenai '$topic' di lingkungan sekolah, kelompok 1 mencatat data kuantitatif yang menunjukkan fluktuasi signifikan antar waktu pengukuran.",
-                "Berdasarkan anomali data tersebut, tindakan analitis paling tepat yang harus dilakukan untuk memastikan validitas kesimpulan adalah..."
-            ),
-            Triple(
-                "Studi Kasus Kontekstual B (Eksperimen Komparatif):",
-                "Dua metode pendekatan pembelajaran terkait '$topic' diuji coba pada dua kelas paralel. Kelas A menggunakan alat peraga manipulatif, sedangkan Kelas B menggunakan simulasi digital interaktif.",
-                "Jika hasil evaluasi menunjukkan kelas A unggul pada aspek pemahaman konsep dasar namun kelas B unggul pada kecepatan aplikasi, analisis evaluatif yang paling objektif adalah..."
-            ),
-            Triple(
-                "Studi Kasus Kontekstual C (Pemecahan Masalah Warga):",
-                "Sebuah komunitas warga merancang proyek mini berbasis '$topic' untuk efisiensi energi dan sumber daya lokal. Terdapat perdebatan antara prioritas kecepatan pengerjaan atau ketepatan standar kualitas.",
-                "Langkah penerapan strategis yang paling tepat untuk mendamaikan kedua prioritas tersebut dengan kaidah ilmiah adalah..."
-            ),
-            Triple(
-                "Studi Kasus Kontekstual D (Analisis Studi Literatur):",
-                "Dalam kajian literatur ilmiah mengenai perkembangan konsep '$topic', ditemukan perbedaan interpretasi antara temuan riset dekade lalu dengan riset modern berbasis teknologi mutakhir.",
-                "Sikap kritis dan evaluatif yang seharusnya diambil oleh seorang peneliti muda terhadap perbedaan temuan tersebut adalah..."
-            ),
-            Triple(
-                "Studi Kasus Kontekstual E (Studi Kasus Proyek Kolaboratif):",
-                "Tim proyek siswa mengalami kendala ketidaksesuaian antara estimasi waktu perencanaan awal dengan realisasi pengerjaan materi '$topic' di lapangan.",
-                "Evaluasi manajerial yang paling tepat untuk memperbaiki efisiensi dan efektivitas kerja tim pada siklus berikutnya adalah..."
-            )
-        )
+        // Differentiate cognitive levels and scenarios based on fase, subject, and jenisAsesmen
+        val (levelKognitifList, scenarios) = getSubjectSpecificScenarios(subject, fase, topic, jenisAsesmen)
 
         for (i in 1..count) {
             val level = levelKognitifList[(i - 1) % levelKognitifList.size]
@@ -137,8 +109,82 @@ object OfflineAssessmentEngine {
             jumlahSoal = count,
             kisiKisiList = kisiList,
             soalList = soalList,
-            pedomanPenskoran = pedoman
+            pedomanPenskoran = pedoman,
+            isOnlineAiGenerated = false,
+            engineName = "Engine Standar Kurikulum (Offline)"
         )
+    }
+
+    private fun getSubjectSpecificScenarios(subject: String, fase: String, topic: String, jenisAsesmen: String): Pair<List<String>, List<Triple<String, String, String>>> {
+        val (baseLevels, scenarios) = when (subject) {
+            "Matematika", "Fisika", "Kimia", "Biologi" -> when (fase) {
+                "Fase F" -> Pair(
+                    listOf("C4 (Menganalisis)", "C5 (Mengevaluasi)", "C6 (Mencipta)"),
+                    listOf(
+                        Triple("Analisis Konseptual:", "Dalam model $topic, variabel yang saling bergantung menunjukkan tren nonlinear.", "Bagaimana cara melakukan optimasi terhadap model tersebut untuk hasil maksimal?"),
+                        Triple("Evaluasi Penerapan:", "$topic diterapkan dalam teknologi modern.", "Uraikan efisiensi dari model tersebut dalam konteks nyata!"),
+                        Triple("Kreasi Model:", "Fenomena $topic di dunia nyata.", "Rancanglah sebuah model untuk memprediksi perubahan $topic!")
+                    )
+                )
+                else -> Pair(
+                    listOf("C2 (Memahami)", "C3 (Menerapkan)"),
+                    listOf(
+                        Triple("Penerapan Dasar:", "Rumus $topic digunakan pada situasi X.", "Hitunglah nilai berdasarkan $topic!"),
+                        Triple("Eksplorasi:", "Pola $topic pada angka.", "Sebutkan pola yang terbentuk pada $topic!")
+                    )
+                )
+            }
+            "Bahasa Indonesia", "Bahasa Inggris" -> when (fase) {
+                "Fase F" -> Pair(
+                    listOf("C4 (Menganalisis)", "C5 (Mengevaluasi)", "C6 (Mencipta)"),
+                    listOf(
+                        Triple("Analisis Kritis:", "Sebuah teks mengenai $topic.", "Identifikasi bias atau sudut pandang penulis dalam teks tersebut!"),
+                        Triple("Evaluasi Estetika:", "Karya sastra bertema $topic.", "Evaluasilah gaya bahasa dan pesan moral yang terkandung di dalamnya!"),
+                        Triple("Kreasi Teks:", "Topik $topic.", "Buatlah sebuah esai kritis yang mengulas fenomena $topic!")
+                    )
+                )
+                else -> Pair(
+                    listOf("C2 (Memahami)", "C3 (Menerapkan)"),
+                    listOf(
+                        Triple("Pemahaman:", "Teks tentang $topic.", "Apa gagasan utama dari teks tersebut?"),
+                        Triple("Penerapan:", "$topic dalam percakapan.", "Bagaimana cara menggunakan ungkapan $topic dalam konteks yang tepat?")
+                    )
+                )
+            }
+            "IPAS", "IPA", "IPS", "Sejarah", "Geografi", "Ekonomi", "Sosiologi", "Pendidikan Pancasila" -> when (fase) {
+                "Fase F", "Fase E" -> Pair(
+                    listOf("C4 (Menganalisis)", "C5 (Mengevaluasi)"),
+                    listOf(
+                        Triple("Analisis Fenomena:", "Data perubahan $topic dalam masyarakat/alam.", "Mengapa $topic tersebut berpengaruh signifikan?"),
+                        Triple("Evaluasi Sosial/Sains:", "Penerapan kebijakan/metode $topic.", "Apakah hasil $topic sudah tepat guna? Analisis faktor-faktor penyebabnya!")
+                    )
+                )
+                else -> Pair(
+                    listOf("C2 (Memahami)", "C3 (Menerapkan)"),
+                    listOf(
+                        Triple("Pengenalan:", "Pengamatan $topic di lingkungan.", "Apa peran $topic dalam kehidupan?"),
+                        Triple("Aplikasi:", "Percobaan/Studi kasus $topic sederhana.", "Bagaimana cara kerja $topic tersebut?")
+                    )
+                )
+            }
+            else -> Pair(
+                listOf("C1 (Mengingat)", "C2 (Memahami)", "C3 (Menerapkan)"),
+                listOf(
+                    Triple("Pengenalan:", "Sebuah pengenalan dasar mengenai '$topic'.", "Apa pengertian dasar dari '$topic'?"),
+                    Triple("Eksplorasi:", "Eksplorasi sederhana tentang '$topic'.", "Sebutkan contoh penerapan '$topic' di sekitar kita!"),
+                    Triple("Aplikasi Dasar:", "Menerapkan '$topic' dalam kegiatan sederhana.", "Bagaimana cara melakukan '$topic' dengan benar?")
+                )
+            )
+        }
+
+        val adjustedLevels = if (jenisAsesmen.contains("Formatif")) {
+            baseLevels.filter { it.contains("C1") || it.contains("C2") || it.contains("C3") }
+                .ifEmpty { listOf("C1 (Mengingat)", "C2 (Memahami)", "C3 (Menerapkan)") }
+        } else {
+            baseLevels
+        }
+
+        return Pair(adjustedLevels, scenarios)
     }
 }
 
