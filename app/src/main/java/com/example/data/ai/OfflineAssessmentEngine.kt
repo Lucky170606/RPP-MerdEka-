@@ -20,18 +20,48 @@ object OfflineAssessmentEngine {
         val kisiList = mutableListOf<KisiKisiItem>()
         val soalList = mutableListOf<SoalHotsItem>()
 
-        val levelKognitifList = listOf("C4 (Menganalisis)", "C5 (Mengevaluasi)", "C3 (Menerapkan)", "C4 (Menganalisis)", "C6 (Mencipta/Merancang)", "C2 (Memahami)", "C4 (Menganalisis)")
+        val levelKognitifList = listOf("C4 (Menganalisis)", "C5 (Mengevaluasi)", "C3 (Menerapkan)", "C4 (Menganalisis)", "C6 (Mencipta/Merancang)", "C2 (Memahami)", "C3 (Menerapkan)", "C5 (Mengevaluasi)", "C4 (Menganalisis)", "C6 (Mencipta/Merancang)")
+
+        // Contextual scenario templates to ensure questions are rich and non-repetitive
+        val scenarios = listOf(
+            Triple(
+                "Studi Kasus Kontekstual A (Praktik Lapangan):",
+                "Dalam kegiatan observasi lapangan mengenai '$topic' di lingkungan sekolah, kelompok 1 mencatat data kuantitatif yang menunjukkan fluktuasi signifikan antar waktu pengukuran.",
+                "Berdasarkan anomali data tersebut, tindakan analitis paling tepat yang harus dilakukan untuk memastikan validitas kesimpulan adalah..."
+            ),
+            Triple(
+                "Studi Kasus Kontekstual B (Eksperimen Komparatif):",
+                "Dua metode pendekatan pembelajaran terkait '$topic' diuji coba pada dua kelas paralel. Kelas A menggunakan alat peraga manipulatif, sedangkan Kelas B menggunakan simulasi digital interaktif.",
+                "Jika hasil evaluasi menunjukkan kelas A unggul pada aspek pemahaman konsep dasar namun kelas B unggul pada kecepatan aplikasi, analisis evaluatif yang paling objektif adalah..."
+            ),
+            Triple(
+                "Studi Kasus Kontekstual C (Pemecahan Masalah Warga):",
+                "Sebuah komunitas warga merancang proyek mini berbasis '$topic' untuk efisiensi energi dan sumber daya lokal. Terdapat perdebatan antara prioritas kecepatan pengerjaan atau ketepatan standar kualitas.",
+                "Langkah penerapan strategis yang paling tepat untuk mendamaikan kedua prioritas tersebut dengan kaidah ilmiah adalah..."
+            ),
+            Triple(
+                "Studi Kasus Kontekstual D (Analisis Studi Literatur):",
+                "Dalam kajian literatur ilmiah mengenai perkembangan konsep '$topic', ditemukan perbedaan interpretasi antara temuan riset dekade lalu dengan riset modern berbasis teknologi mutakhir.",
+                "Sikap kritis dan evaluatif yang seharusnya diambil oleh seorang peneliti muda terhadap perbedaan temuan tersebut adalah..."
+            ),
+            Triple(
+                "Studi Kasus Kontekstual E (Studi Kasus Proyek Kolaboratif):",
+                "Tim proyek siswa mengalami kendala ketidaksesuaian antara estimasi waktu perencanaan awal dengan realisasi pengerjaan materi '$topic' di lapangan.",
+                "Evaluasi manajerial yang paling tepat untuk memperbaiki efisiensi dan efektivitas kerja tim pada siklus berikutnya adalah..."
+            )
+        )
 
         for (i in 1..count) {
             val level = levelKognitifList[(i - 1) % levelKognitifList.size]
             val bentuk = if (i <= (count * 0.6).toInt().coerceAtLeast(2)) "Pilihan Ganda (PG)" else "Uraian Analisis Kasus"
+            val scenario = scenarios[(i - 1) % scenarios.size]
 
             kisiList.add(
                 KisiKisiItem(
                     nomorUrut = i,
-                    capaianElemen = "Pemahaman & Penerapan Konsep $subject",
-                    materiPokok = "$topic (Sub-Materi $i)",
-                    indikatorSoal = "Disajikan stimulus kontekstual berupa studi kasus/data $topic, peserta didik mampu $level untuk memecahkan persoalan dunia nyata.",
+                    capaianElemen = "Pemahaman & Penerapan Konseptual $subject ($topic)",
+                    materiPokok = "$topic (Fokus Aspek $i)",
+                    indikatorSoal = "Disajikan ${scenario.first.lowercase()} terkait $topic, peserta didik mampu $level secara kritis dan solutif.",
                     levelKognitif = level,
                     bentukSoal = bentuk,
                     nomorSoal = i
@@ -39,21 +69,30 @@ object OfflineAssessmentEngine {
             )
 
             if (bentuk.startsWith("Pilihan Ganda")) {
+                val correctKey = when (i % 4) {
+                    1 -> "A"
+                    2 -> "B"
+                    3 -> "C"
+                    else -> "D"
+                }
+
+                val options = listOf(
+                    "A. Melakukan kalibrasi ulang instrumen ukur dan mengontrol variabel luar yang dapat mendistorsi hasil eksperimen $topic.",
+                    "B. Mengabaikan data outlier yang menyimpang jauh dari rata-rata kelompok tanpa dokumentasi logis.",
+                    "C. Mengubah hipotesis awal agar sesuai dengan tren data empiris yang diperoleh di lapangan secara instan.",
+                    "D. Menyamakan seluruh parameter pengamatan tanpa memperhitungkan perbedaan karakteristik subjek uji."
+                )
+
                 soalList.add(
                     SoalHotsItem(
                         nomor = i,
                         bentukSoal = "Pilihan Ganda",
                         levelKognitif = level,
-                        stimulusText = "Perhatikan narasi kasus berikut:\nDi sebuah lingkungan satuan pendidikan, sekelompok siswa sedang mengamati fenomena terkait '$topic'. Mereka menemukan perbedaan hasil antara kelompok A dan kelompok B saat melakukan pengukuran dan percobaan langsung di lapangan.",
-                        pertanyaan = "Berdasarkan data observasi dan konsep dasar $topic, kesimpulan logis yang paling tepat untuk menjelaskan perbedaan tersebut adalah...",
-                        pilihanOpsi = listOf(
-                            "A. Variabel kontrol tidak dijaga secara konsisten sehingga mempengaruhi kestabilan proses $topic.",
-                            "B. Pengaruh faktor eksternal lingkungan diabaikan tanpa pencatatan kondisi awal yang valid.",
-                            "C. Terjadi kesalahan sistematik pada alat ukur yang digunakan kedua kelompok.",
-                            "D. Konsep dasar yang diterapkan kelompok A bertentangan dengan kaidah ilmiah $topic."
-                        ),
-                        kunciJawaban = "A",
-                        pembahasanDanAlasan = "Pilihan A benar karena dalam penyelidikan ilmiah kontekstual materi $topic, konsistensi variabel kontrol merupakan faktor kunci yang menentukan validitas dan perbandingan hasil yang adil.",
+                        stimulusText = "${scenario.first}\n${scenario.second}\nTopik Kajian: $subject - $topic (Butir Soal #$i)",
+                        pertanyaan = scenario.third,
+                        pilihanOpsi = options,
+                        kunciJawaban = correctKey,
+                        pembahasanDanAlasan = "Pembahasan Soal #$i: Pilihan $correctKey adalah jawaban paling tepat karena didasarkan pada prinsip metodologi ilmiah $subject pada materi $topic, di mana pengendalian variabel dan validasi data menjadi pilar utama objektivitas.",
                         skorMaksimal = 10
                     )
                 )
@@ -63,11 +102,11 @@ object OfflineAssessmentEngine {
                         nomor = i,
                         bentukSoal = "Uraian Analisis Kasus",
                         levelKognitif = level,
-                        stimulusText = "Studi Kasus Kontekstual:\nSebuah komunitas warga menghadapi kendala nyata terkait penerapan '$topic' dalam kehidupan sehari-hari. Beberapa warga berpendapat metode konvensional lebih cepat, sedangkan generasi muda mengusulkan solusi inovatif berbasis prinsip ramah lingkungan dan efisiensi.",
-                        pertanyaan = "1) Analisislah 2 kelebihan dan 2 kelemahan dari kedua sudut pandang tersebut berdasarkan prinsip materi $topic!\n2) Berikan rekomendasi solusi kompromi yang aplikatif dan mudah diterapkan oleh seluruh warga!",
+                        stimulusText = "${scenario.first}\nKompleksitas Masalah Uraian #$i untuk materi '$topic' dalam bidang $subject:\n${scenario.second}",
+                        pertanyaan = "1) Lakukan analisis kritis terhadap akar permasalahan utama pada kasus $topic di atas dengan menguraikan minimal 2 faktor penyebab utama!\n2) Susunlah rancangan solusi operasional yang inovatif, terukur, dan dapat diimplementasikan secara berkelanjutan!",
                         pilihanOpsi = emptyList(),
-                        kunciJawaban = "Pedoman Jawaban Uraian:\n1. Analisis sudut pandang: Menguraikan perbandingan efisiensi waktu vs keberlanjutan jangka panjang materi $topic secara komprehensif.\n2. Rekomendasi solusi: Memberikan langkah aksi terukur yang memadukan kebiasaan warga dengan teknologi/metode baru ramah lingkungan.",
-                        pembahasanDanAlasan = "Rubrik Jawaban Uraian:\n• Skor 20: Analisis lengkap 2 sudut pandang + rekomendasi solutif & logis.\n• Skor 15: Analisis lengkap namun rekomendasi kurang spesifik.\n• Skor 10: Analisis hanya 1 sudut pandang.\n• Skor 5: Jawaban sangat terbatas.",
+                        kunciJawaban = "Pedoman Kunci Jawaban Uraian #$i:\n1. Analisis Faktor Penyebab: Mengidentifikasi faktor teknis dan non-teknis terkait $topic secara komprehensif.\n2. Rancangan Solusi: Menyediakan langkah aksi terstruktur yang memadukan prinsip teoretis $subject dengan kearifan lokal atau teknologi tepat guna.",
+                        pembahasanDanAlasan = "Rubrik Penilaian Uraian #$i:\n• Skor 20: Analisis sangat tajam (2+ faktor) + Solusi inovatif dan terukur.\n• Skor 15: Analisis cukup mendalam namun solusi kurang operasional.\n• Skor 10: Analisis terbatas pada permukaan masalah.\n• Skor 5: Jawaban kurang relevan dengan esensi $topic.",
                         skorMaksimal = 20
                     )
                 )
@@ -102,3 +141,4 @@ object OfflineAssessmentEngine {
         )
     }
 }
+
