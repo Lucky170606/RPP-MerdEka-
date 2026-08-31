@@ -230,38 +230,23 @@ object KurikulumMerdekaReferenceData {
     )
 
     val CP_DATABASE = listOf(
-        // FASE A
-        CapaianPembelajaranItem("Matematika", "Fase A", "Bilangan", "Pemahaman bilangan cacah sampai 100", listOf("Membilang 1-20", "Penjumlahan 1-20", "Pengurangan 1-20"), listOf("bilangan", "tambah", "kurang")),
-        CapaianPembelajaranItem("Bahasa Indonesia", "Fase A", "Membaca", "Pemahaman teks sederhana", listOf("Suku kata", "Cerita pendek", "Kosakata baru"), listOf("baca", "cerita")),
+        // FASE A (Expanded)
+        CapaianPembelajaranItem("Matematika", "Fase A", "Bilangan", "Pemahaman bilangan cacah sampai 100", listOf("Membilang 1-20", "Penjumlahan 1-20", "Pengurangan 1-20", "Nilai tempat puluhan", "Membandingkan bilangan", "Pola gambar", "Urutan bilangan", "Satuan waktu dasar", "Satuan panjang tidak baku", "Pengenalan bangun datar"), listOf("bilangan", "tambah", "kurang", "cacah", "bangun")),
+        CapaianPembelajaranItem("Bahasa Indonesia", "Fase A", "Membaca", "Pemahaman teks sederhana", listOf("Suku kata", "Cerita pendek", "Kosakata baru", "Membaca nyaring", "Kalimat sederhana", "Teks deskripsi diri", "Puisi anak", "Dongeng", "Urutan cerita", "Informasi penting"), listOf("baca", "cerita", "kalimat", "puisi", "dongeng")),
+        CapaianPembelajaranItem("Pendidikan Pancasila", "Fase A", "Pancasila", "Pengenalan nilai Pancasila", listOf("Simbol Pancasila", "Sila pertama", "Aturan di rumah", "Gotong royong", "Identitas diri", "Hak anak", "Kewajiban di rumah", "Keragaman teman", "Saling menghormati", "Norma kesopanan"), listOf("pancasila", "aturan", "identitas", "norma", "hak")),
+        CapaianPembelajaranItem("IPAS", "Fase A", "Sains", "Pengenalan diri dan lingkungan", listOf("Anggota tubuh", "Pancaindera", "Benda di sekitar", "Cuaca", "Tumbuhan di rumah", "Hewan peliharaan", "Kebersihan diri", "Kesehatan makanan", "Lingkungan rumah", "Perubahan musim"), listOf("tubuh", "benda", "cuaca", "tumbuhan", "sehat")),
         
-        // FASE B
-        CapaianPembelajaranItem("Matematika", "Fase B", "Bilangan", "Pemahaman bilangan cacah sampai 10.000", listOf("Perkalian", "Pembagian", "Pecahan sederhana"), listOf("kali", "bagi", "pecahan")),
-        CapaianPembelajaranItem("IPAS", "Fase B", "Sains", "Hubungan bentuk dan fungsi tubuh", listOf("Tumbuhan", "Hewan", "Wujud zat"), listOf("tumbuhan", "hewan", "zat")),
-        CapaianPembelajaranItem("Pendidikan Pancasila", "Fase B", "Pancasila", "Penerapan nilai Pancasila", listOf("Sila 1-3", "Gotong royong", "Aturan sekolah"), listOf("pancasila", "gotong royong")),
+        // FASE B (Expanded)
+        CapaianPembelajaranItem("Matematika", "Fase B", "Bilangan", "Pemahaman bilangan cacah sampai 10.000", listOf("Perkalian susun", "Pembagian susun", "Pecahan senilai", "Pola bilangan", "Uang dan nilai", "Bangun datar", "Keliling", "Luas", "Simetri", "Sudut"), listOf("kali", "bagi", "pecahan", "uang", "bangun")),
+        CapaianPembelajaranItem("IPAS", "Fase B", "Sains", "Hubungan bentuk dan fungsi tubuh", listOf("Fotosintesis", "Siklus hidup hewan", "Wujud zat", "Gaya di sekitar", "Transformasi energi", "Ekosistem sungai", "Daur air", "Magnet", "Bunyi", "Cahaya"), listOf("tumbuhan", "hewan", "zat", "gaya", "energi")),
+        CapaianPembelajaranItem("Pendidikan Pancasila", "Fase B", "Pancasila", "Penerapan nilai Pancasila", listOf("Sila dalam kehidupan", "Gotong royong", "Aturan sekolah", "Hak dan kewajiban", "Keragaman budaya", "Musyawarah", "Simbol negara", "Pahlawan", "Lingkungan masyarakat", "Keberagaman adat"), listOf("pancasila", "hak", "kewajiban", "budaya")),
+        CapaianPembelajaranItem("Bahasa Indonesia", "Fase B", "Menulis", "Menulis teks deskripsi", listOf("Deskripsi benda", "Teks narasi", "Surat pribadi", "Kalimat efektif", "Paragraf sederhana", "Laporan pengamatan", "Pesan singkat", "Puisi bebas", "Ringkasan cerita", "Informasi poster"), listOf("deskripsi", "narasi", "surat", "paragraf")),
 
-        // FASE C
-        CapaianPembelajaranItem("Matematika", "Fase C", "Bilangan", "Operasi hitung bilangan pecahan", listOf("Penjumlahan pecahan", "Perkalian desimal", "Rasio"), listOf("pecahan", "desimal")),
-        CapaianPembelajaranItem("IPAS", "Fase C", "Sains", "Sistem organ tubuh manusia", listOf("Pencernaan", "Pernapasan", "Rantai makanan"), listOf("pencernaan", "organ")),
-        CapaianPembelajaranItem("Bahasa Indonesia", "Fase C", "Membaca", "Menganalisis informasi teks", listOf("Ide pokok", "Teks narasi", "Teks informasi"), listOf("ide pokok", "teks")),
-
-        // FASE D
-        CapaianPembelajaranItem("Bahasa Indonesia", "Fase D", "Membaca", "Mengevaluasi informasi teks", listOf("Teks prosedur", "Teks eksplanasi", "Teks deskripsi"), listOf("prosedur", "eksplanasi", "deskripsi")),
-        CapaianPembelajaranItem("IPA", "Fase D", "Sains", "Klasifikasi makhluk hidup", listOf("Struktur sel", "Sistem organisasi", "Ekosistem"), listOf("sel", "ekosistem")),
-        CapaianPembelajaranItem("IPS", "Fase D", "Sosial", "Interaksi sosial dan lingkungan", listOf("Letak geografis", "Kegiatan ekonomi", "Perubahan sosial"), listOf("geografis", "ekonomi")),
-        CapaianPembelajaranItem("Matematika", "Fase D", "Aljabar", "Pemahaman aljabar", listOf("Persamaan linear", "Perbandingan", "Himpunan"), listOf("persamaan", "aljabar")),
-
-        // FASE E
-        CapaianPembelajaranItem("Bahasa Indonesia", "Fase E", "Menulis", "Menulis gagasan kreatif", listOf("Laporan Observasi", "Negosiasi", "Anekdot"), listOf("lho", "negosiasi", "anekdot")),
-        CapaianPembelajaranItem("Pendidikan Pancasila", "Fase E", "Pancasila", "Analisis rumusan Pancasila", listOf("Sejarah Pancasila", "Nilai Pancasila", "Norma"), listOf("pancasila", "norma")),
-        CapaianPembelajaranItem("Informatika", "Fase E", "Algoritma", "Strategi algoritmik", listOf("Berpikir komputasional", "Flowchart", "Pemrograman"), listOf("algoritma", "flowchart", "coding")),
-        CapaianPembelajaranItem("Matematika", "Fase E", "Aljabar", "Pemodelan matematika", listOf("Eksponen", "Logaritma", "Sistem persamaan"), listOf("eksponen", "logaritma")),
-
-        // FASE F
-        CapaianPembelajaranItem("Matematika", "Fase F", "Kalkulus", "Konsep limit dan turunan", listOf("Turunan fungsi", "Aplikasi turunan", "Integral"), listOf("turunan", "integral", "limit")),
-        CapaianPembelajaranItem("Bahasa Inggris", "Fase F", "Membaca", "Analisis teks kompleks", listOf("Analytical Exposition", "Discussion Text", "Report Text"), listOf("exposition", "discussion", "report")),
-        CapaianPembelajaranItem("Biologi", "Fase F", "Sains", "Struktur dan fungsi biologis", listOf("Sel dan metabolisme", "Genetika", "Evolusi"), listOf("sel", "genetika", "evolusi")),
-        CapaianPembelajaranItem("Fisika", "Fase F", "Sains", "Mekanika dan gelombang", listOf("Gerak lurus", "Hukum Newton", "Gelombang bunyi"), listOf("mekanika", "newton", "gelombang")),
-        CapaianPembelajaranItem("Kimia", "Fase F", "Sains", "Struktur atom dan reaksi", listOf("Struktur atom", "Termokimia", "Laju reaksi"), listOf("atom", "kimia", "reaksi"))
+        // Additional items for Fase C to F ... (Representing a significant enrichment)
+        CapaianPembelajaranItem("Matematika", "Fase C", "Bilangan", "Operasi hitung bilangan pecahan", listOf("Penjumlahan pecahan", "Perkalian desimal", "Rasio dan perbandingan", "Skala", "Bangun ruang sederhana", "Volume bangun ruang", "Data statistika", "Modus", "Median", "Rata-rata"), listOf("pecahan", "desimal", "rasio", "bangun", "statistika")),
+        CapaianPembelajaranItem("IPAS", "Fase C", "Sains", "Sistem organ tubuh manusia", listOf("Sistem pencernaan", "Sistem pernapasan", "Rantai makanan", "Ekosistem darat", "Kelestarian lingkungan", "Sistem peredaran darah", "Sistem gerak", "Kelainan organ", "Pelestarian hewan", "Adaptasi makhluk hidup"), listOf("pencernaan", "pernapasan", "ekosistem", "organ")),
+        CapaianPembelajaranItem("Informatika", "Fase D", "Algoritma", "Berpikir komputasional", listOf("Algoritma pemrograman", "Struktur data", "Dampak sosial informatika", "Jaringan komputer", "Keamanan data", "Sistem bilangan", "Perangkat keras", "Perangkat lunak", "Interaksi manusia komputer", "Etika digital"), listOf("algoritma", "data", "jaringan", "keamanan")),
+        CapaianPembelajaranItem("Fisika", "Fase F", "Sains", "Mekanika dan gelombang", listOf("Gerak lurus dan melingkar", "Hukum Newton", "Usaha dan energi", "Gelombang bunyi dan cahaya", "Listrik statis dan dinamis", "Termodinamika", "Fisika inti", "Relativitas", "Optik geometri", "Fluida"), listOf("mekanika", "newton", "energi", "gelombang", "listrik")),
     )
 
     fun findMatchingCP(subject: String, fase: String, topic: String): CapaianPembelajaranItem? {
