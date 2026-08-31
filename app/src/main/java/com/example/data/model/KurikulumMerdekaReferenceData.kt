@@ -54,7 +54,7 @@ object KurikulumMerdekaReferenceData {
         "Asesmen Sumatif (Akhir Semester)"
     )
 
-    fun getTopicsForSubjectAndFase(subject: String, fase: String): List<String> {
+    fun getSuggestedTopics(fase: String, subject: String): List<String> {
         return CP_DATABASE
             .filter { it.subject.equals(subject, ignoreCase = true) && it.fase.equals(fase, ignoreCase = true) }
             .flatMap { it.suggestedTujuan }

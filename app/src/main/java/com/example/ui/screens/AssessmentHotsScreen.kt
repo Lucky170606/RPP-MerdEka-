@@ -58,7 +58,7 @@ fun AssessmentHotsScreen(
 
     val subjects = remember(selectedFase) { KurikulumMerdekaReferenceData.getSubjectsForFase(selectedFase.code) }
     val jenisList = KurikulumMerdekaReferenceData.JENIS_ASESMEN_LIST
-    val availableTopics = remember(selectedSubject, selectedFase) { KurikulumMerdekaReferenceData.getTopicsForSubjectAndFase(selectedSubject, selectedFase.code) }
+    val availableTopics = remember(selectedSubject, selectedFase) { KurikulumMerdekaReferenceData.getSuggestedTopics(selectedFase.code, selectedSubject) }
     var expandedTopic by remember { mutableStateOf(false) }
 
     Scaffold(

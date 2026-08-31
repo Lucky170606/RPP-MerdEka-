@@ -237,7 +237,7 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
     val wizardFase = MutableStateFlow(Fase.FASE_B)
     val wizardGrade = MutableStateFlow("Kelas 4")
     val wizardSubject = MutableStateFlow("Matematika")
-    val wizardTopic = MutableStateFlow("Mengenal Pecahan Senilai dan Operasi Hitung")
+    val wizardTopic = MutableStateFlow("")
     val wizardTimeAllocation = MutableStateFlow("2 JP (2 x 35 Menit)")
     val wizardSemester = MutableStateFlow("Semester 1 (Ganjil)")
     val wizardAcademicYear = MutableStateFlow("2024/2025")

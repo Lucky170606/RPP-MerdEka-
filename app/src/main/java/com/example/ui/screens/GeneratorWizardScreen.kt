@@ -240,16 +240,38 @@ fun GeneratorWizardScreen(
 
                 // Topik / Materi
                 item {
-                    OutlinedTextField(
-                        value = topic,
-                        onValueChange = { viewModel.wizardTopic.value = it },
-                        label = { Text("Topik / Materi Pokok *") },
-                        placeholder = { Text("Misal: Mengenal Pecahan Senilai dengan Benda Konkret") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("input_topic"),
-                        shape = RoundedCornerShape(10.dp)
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = topic,
+                            onValueChange = { viewModel.wizardTopic.value = it },
+                            label = { Text("Topik / Materi Pokok *") },
+                            placeholder = { Text("Misal: Mengenal Pecahan Senilai dengan Benda Konkret") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("input_topic"),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        
+                        val suggestedTopics = remember(selectedFase, selectedSubject) {
+                            KurikulumMerdekaReferenceData.getSuggestedTopics(selectedFase.code, selectedSubject)
+                        }
+                        
+                        if (suggestedTopics.isNotEmpty()) {
+                            Text(
+                                text = "Saran Topik (${selectedSubject} ${selectedFase.code}):",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                items(suggestedTopics.take(5)) { topicSuggestion ->
+                                    SuggestionChip(
+                                        onClick = { viewModel.wizardTopic.value = topicSuggestion },
+                                        label = { Text(topicSuggestion, fontSize = 11.sp) }
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // Alokasi Waktu
