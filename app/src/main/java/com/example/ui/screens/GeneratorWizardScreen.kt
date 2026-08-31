@@ -253,7 +253,9 @@ fun GeneratorWizardScreen(
                         )
                         
                         val suggestedTopics = remember(selectedFase, selectedSubject) {
-                            KurikulumMerdekaReferenceData.getSuggestedTopics(selectedFase.code, selectedSubject)
+                            val topics = KurikulumMerdekaReferenceData.getSuggestedTopics(selectedFase.code, selectedSubject)
+                            android.util.Log.d("WizardDebug", "Suggestions for ${selectedFase.code} ${selectedSubject}: ${topics.size}")
+                            topics
                         }
                         
                         if (suggestedTopics.isNotEmpty()) {
