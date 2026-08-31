@@ -55,7 +55,9 @@ import com.example.ui.theme.*
 import com.example.ui.viewmodel.ModulViewModel
 import com.example.ui.viewmodel.Screen
 import com.example.util.ApiKeyManager
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -83,6 +85,7 @@ fun PedagogicalConsultantScreen(
 
     var queryText by remember { mutableStateOf("") }
     var isProcessing by remember { mutableStateOf(false) }
+    var activeConsultationJob by remember { mutableStateOf<Job?>(null) }
 
     val messages = remember {
         mutableStateListOf(
@@ -176,7 +179,7 @@ fun PedagogicalConsultantScreen(
         }
         isProcessing = true
 
-        coroutineScope.launch {
+        activeConsultationJob = coroutineScope.launch {
             try {
                 if (messages.isNotEmpty()) {
                     listState.animateScrollToItem(messages.size - 1)
@@ -199,7 +202,7 @@ fun PedagogicalConsultantScreen(
                             - Gunakan format teks rapi dan hindari rumus LaTeX berlebih.
                         """.trimIndent()
 
-                        val result = withTimeoutOrNull(10000L) {
+                        val result = withTimeoutOrNull(60000L) {
                             GeminiService.generateText(context, aiPrompt)
                         }
 
@@ -215,6 +218,8 @@ fun PedagogicalConsultantScreen(
                             isFallback = false
                             result
                         }
+                    } catch (ce: CancellationException) {
+                        throw ce
                     } catch (e: Exception) {
                         isOnlineActive = false
                         usedSource = "Offline Kurikulum Merdeka"
@@ -243,6 +248,21 @@ fun PedagogicalConsultantScreen(
                 } else {
                     messages.add(responseMsg)
                 }
+            } catch (ce: CancellationException) {
+                // Dihentikan oleh pengguna secara aman tanpa blocking
+                val stopMsg = ChatMessage(
+                    sender = "AI",
+                    content = "*(Respon dihentikan oleh pengguna)*\n\n${PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)}",
+                    source = "Offline Kurikulum Merdeka",
+                    isFallback = true,
+                    originalQuery = trimmed,
+                    errorReason = "Respon dihentikan"
+                )
+                if (retryIndex != null && retryIndex in messages.indices) {
+                    messages[retryIndex] = stopMsg
+                } else {
+                    messages.add(stopMsg)
+                }
             } catch (t: Throwable) {
                 val fallbackAnswer = PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
                 val fallbackMsg = ChatMessage(
@@ -260,6 +280,7 @@ fun PedagogicalConsultantScreen(
                 }
             } finally {
                 isProcessing = false
+                activeConsultationJob = null
                 if (messages.isNotEmpty()) {
                     listState.animateScrollToItem(messages.size - 1)
                 }
@@ -453,7 +474,7 @@ fun PedagogicalConsultantScreen(
                         onValueChange = { queryText = it },
                         placeholder = {
                             Text(
-                                "Tanyakan ide mengajar atau diferensiasi...",
+                                if (isProcessing) "Sedang merumuskan jawaban..." else "Tanyakan ide mengajar atau diferensiasi...",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 maxLines = 1,
@@ -475,26 +496,67 @@ fun PedagogicalConsultantScreen(
                         ),
                         maxLines = 4,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                        keyboardActions = KeyboardActions(onSend = { handleSend(queryText) })
+                        keyboardActions = KeyboardActions(onSend = { 
+                            if (!isProcessing) handleSend(queryText) 
+                        })
                     )
 
-                    IconButton(
-                        onClick = { handleSend(queryText) },
-                        enabled = queryText.isNotBlank() && !isProcessing,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (queryText.isNotBlank() && !isProcessing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-                            )
-                            .testTag("btn_send_consultation")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Kirim",
-                            tint = if (queryText.isNotBlank() && !isProcessing) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                            modifier = Modifier.size(18.dp)
+                    if (isProcessing) {
+                        // AI Studio Style: Sleek circular button with subtle ring and centered rounded stop square
+                        val infiniteTransition = rememberInfiniteTransition(label = "stop_ring")
+                        val ringAlpha by infiniteTransition.animateFloat(
+                            initialValue = 0.4f,
+                            targetValue = 1f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1000, easing = LinearEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "ring_glow"
                         )
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .border(
+                                    1.5.dp,
+                                    MaterialTheme.colorScheme.primary.copy(alpha = ringAlpha),
+                                    CircleShape
+                                )
+                                .clickable {
+                                    activeConsultationJob?.cancel()
+                                    isProcessing = false
+                                }
+                                .testTag("btn_stop_consultation"),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // Authentic AI Studio stop square
+                            Box(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .clip(RoundedCornerShape(2.5.dp))
+                                    .background(MaterialTheme.colorScheme.onSurface)
+                            )
+                        }
+                    } else {
+                        IconButton(
+                            onClick = { handleSend(queryText) },
+                            enabled = queryText.isNotBlank(),
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (queryText.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                                )
+                                .testTag("btn_send_consultation")
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Kirim",
+                                tint = if (queryText.isNotBlank()) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -1117,7 +1179,9 @@ fun RenderMarkdownBlocks(text: String) {
 }
 
 @Composable
-fun ModernAiThinkingRow(hasKey: Boolean = true) {
+fun ModernAiThinkingRow(
+    hasKey: Boolean = true
+) {
     val infiniteTransition = rememberInfiniteTransition(label = "dots")
     val alpha1 by infiniteTransition.animateFloat(
         initialValue = 0.2f, targetValue = 1f,
@@ -1161,7 +1225,7 @@ fun ModernAiThinkingRow(hasKey: Boolean = true) {
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
@@ -1170,15 +1234,14 @@ fun ModernAiThinkingRow(hasKey: Boolean = true) {
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, fontWeight = FontWeight.Medium),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.width(4.dp))
                 Box(
-                    modifier = Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = alpha1))
+                    modifier = Modifier.size(5.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = alpha1))
                 )
                 Box(
-                    modifier = Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = alpha2))
+                    modifier = Modifier.size(5.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = alpha2))
                 )
                 Box(
-                    modifier = Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = alpha3))
+                    modifier = Modifier.size(5.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = alpha3))
                 )
             }
         }

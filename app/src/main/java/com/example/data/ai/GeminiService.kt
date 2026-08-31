@@ -36,20 +36,19 @@ object GeminiService {
     private const val TAG = "GeminiService"
     
     val SUPPORTED_MODELS = mutableListOf(
-        "gemini-2.5-flash",
         "gemini-3.5-flash",
         "gemini-3.1-flash-lite-preview",
         "gemini-flash-latest",
         "gemini-3.1-pro-preview"
     )
 
-    var activeModel: String = "gemini-2.5-flash"
+    var activeModel: String = "gemini-3.5-flash"
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(6, TimeUnit.SECONDS)
-        .readTimeout(12, TimeUnit.SECONDS)
-        .writeTimeout(8, TimeUnit.SECONDS)
-        .retryOnConnectionFailure(false)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
         .build()
 
     private suspend fun Call.awaitResponse(): Response = suspendCancellableCoroutine { continuation ->
@@ -125,6 +124,7 @@ object GeminiService {
 
             val generationConfig = JSONObject().apply {
                 put("temperature", temperature)
+                put("maxOutputTokens", 8192)
                 if (isJsonResponse) {
                     put("responseMimeType", "application/json")
                 }
@@ -534,6 +534,7 @@ object GeminiService {
             3. Komposisi: Mayoritas Pilihan Ganda (PG) dengan 4 opsi pilihan (A, B, C, D) yang distraktif dan logis, dan sisanya Uraian Analisis Kasus dengan rubrik penskoran.
             4. Kunci jawaban dan pembahasan rasional terperinci.
             5. DUKUNGAN RUMUS & SIMBOL (Sains/Matematika/Fisika/Kimia): Jika materi berkaitan dengan matematika, fisika, atau kimia, tuliskan rumus/persamaan secara jelas menggunakan simbol Unicode (misal: x², H₂O, Δt, √x, ±, α, β, π, ρ, λ, ∫) atau format LaTeX standar dalam kurung dolar seperti ${'$'}f(x) = ax^2 + bx + c${'$'} atau ${'$'}\text{CaCO}_3 + 2\text{HCl} \rightarrow \text{CaCl}_2 + \text{H}_2\text{O} + \text{CO}_2${'$'} agar dapat ter-render rapi dan presisi.
+            6. PENTING & MUTLAK: Anda WAJIB menghasilkan TEPAT $count butir soal secara lengkap dari nomor 1 sampai $count di dalam array JSON "kisiKisi" dan "soalList" tanpa terpotong atau dikurangi!
 
             Harap berikan respons HANYA dalam bentuk JSON murni tanpa markdown wrapper (langsung buka kurung kurawal) dengan format struktur berikut:
             {

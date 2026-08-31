@@ -15,7 +15,7 @@ object OfflineAssessmentEngine {
         semester: String,
         jumlahSoal: Int
     ): AssessmentDocument {
-        val count = jumlahSoal.coerceIn(3, 10)
+        val count = jumlahSoal.coerceIn(3, 20)
 
         val kisiList = mutableListOf<KisiKisiItem>()
         val soalList = mutableListOf<SoalHotsItem>()
