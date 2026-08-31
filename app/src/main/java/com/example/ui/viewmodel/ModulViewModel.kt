@@ -59,11 +59,15 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
     private val protaDao: ProtaDao
     private val promesDao: PromesDao
     private val atpDao: AtpDao
+    private val assessmentDao: com.example.data.local.AssessmentDao
+    private val p5AssessmentDao: com.example.data.local.P5AssessmentDao
     private val backupManager: com.example.data.backup.BackupManager
 
     val allProta: Flow<List<ProtaEntity>>
     val allPromes: Flow<List<PromesEntity>>
     val allAtp: Flow<List<AtpEntity>>
+    val allSavedAssessments: Flow<List<com.example.data.local.AssessmentEntity>>
+    val allSavedP5Assessments: Flow<List<com.example.data.local.P5AssessmentEntity>>
 
     private val moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
@@ -75,11 +79,15 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
         protaDao = db.protaDao()
         promesDao = db.promesDao()
         atpDao = db.atpDao()
+        assessmentDao = db.assessmentDao()
+        p5AssessmentDao = db.p5AssessmentDao()
         backupManager = com.example.data.backup.BackupManager(application, db)
 
         allProta = protaDao.getAllProta()
         allPromes = promesDao.getAllPromes()
         allAtp = atpDao.getAllAtp()
+        allSavedAssessments = assessmentDao.getAllAssessments()
+        allSavedP5Assessments = p5AssessmentDao.getAllP5Assessments()
 
         seedInitialSampleDataIfEmpty()
     }
@@ -242,6 +250,7 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
     val generationState = MutableStateFlow<GenerationState>(GenerationState.Idle)
     val isEnhancingSection = MutableStateFlow(false)
     val isGeneratingAssessment = MutableStateFlow(false)
+    val isGeneratingP5 = MutableStateFlow(false)
 
     fun navigateTo(screen: Screen) {
         if (_currentScreen.value == screen) return
@@ -441,6 +450,7 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
         jenisAsesmen: String,
         semester: String,
         count: Int,
+        pgRatioPercent: Int = 60,
         onResult: (AssessmentDocument) -> Unit
     ) {
         viewModelScope.launch {
@@ -466,10 +476,40 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
                     topic = topic,
                     jenisAsesmen = jenisAsesmen,
                     semester = semester,
-                    jumlahSoal = count
+                    jumlahSoal = count,
+                    pgRatioPercent = pgRatioPercent
                 )
                 onResult(fallbackDoc)
             }
+        }
+    }
+
+    fun saveAssessmentToHistory(doc: AssessmentDocument, onComplete: (Long) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val json = moshi.adapter(AssessmentDocument::class.java).toJson(doc)
+                val entity = com.example.data.local.AssessmentEntity(
+                    title = doc.title,
+                    subject = doc.subject,
+                    fase = doc.fase,
+                    grade = doc.grade,
+                    semester = doc.semester,
+                    topikUjian = doc.topikUjian,
+                    jenisAsesmen = doc.jenisAsesmen,
+                    jumlahSoal = doc.jumlahSoal,
+                    jsonContent = json
+                )
+                val id = assessmentDao.insertAssessment(entity)
+                onComplete(id)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun deleteAssessmentHistory(id: Long) {
+        viewModelScope.launch {
+            assessmentDao.deleteAssessmentById(id)
         }
     }
 
@@ -640,6 +680,62 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
             moshi.adapter(AtpDocument::class.java).fromJson(json)
         } catch (e: Exception) {
             null
+        }
+    }
+
+    fun saveP5AssessmentToHistory(doc: com.example.data.model.P5ProjectModul, onComplete: (Long) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val json = moshi.adapter(com.example.data.model.P5ProjectModul::class.java).toJson(doc)
+                val entity = com.example.data.local.P5AssessmentEntity(
+                    title = doc.title,
+                    tema = doc.tema,
+                    fase = doc.fase,
+                    grade = doc.grade,
+                    jsonContent = json
+                )
+                val id = p5AssessmentDao.insertP5Assessment(entity)
+                onComplete(id)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun deleteP5AssessmentHistory(id: Long) {
+        viewModelScope.launch {
+            p5AssessmentDao.deleteP5AssessmentById(id)
+        }
+    }
+
+    fun generateP5ModulWithAI(
+        temaTitle: String,
+        topikProjek: String,
+        fase: String,
+        grade: String,
+        alokasiWaktu: String,
+        selectedDimensi: List<String>,
+        teacherName: String,
+        schoolName: String,
+        onResult: (com.example.data.model.P5ProjectModul) -> Unit
+    ) {
+        viewModelScope.launch {
+            isGeneratingP5.value = true
+            val result = GeminiService.generateP5Modul(
+                context = getApplication(),
+                temaTitle = temaTitle,
+                topikProjek = topikProjek,
+                fase = fase,
+                grade = grade,
+                alokasiWaktu = alokasiWaktu,
+                selectedDimensi = selectedDimensi,
+                teacherName = teacherName,
+                schoolName = schoolName
+            )
+            isGeneratingP5.value = false
+            result.onSuccess { modul ->
+                onResult(modul)
+            }
         }
     }
 }

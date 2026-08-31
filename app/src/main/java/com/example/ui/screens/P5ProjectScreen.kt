@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.ai.OfflineP5Engine
 import com.example.data.model.*
 import com.example.ui.components.AppHeader
@@ -47,6 +48,15 @@ fun P5ProjectScreen(
 
     var generatedP5Modul by remember { mutableStateOf<P5ProjectModul?>(null) }
     var isGenerating by remember { mutableStateOf(false) }
+    var showHistoryDialog by remember { mutableStateOf(false) }
+    val savedP5Assessments by viewModel.allSavedP5Assessments.collectAsStateWithLifecycle(initialValue = emptyList())
+
+    LaunchedEffect(selectedTema, selectedFase) {
+        val topics = P5ReferenceData.getTopikForFase(selectedTema.id, selectedFase.code)
+        if (topics.isNotEmpty()) {
+            topikProjek = topics[0]
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -65,6 +75,79 @@ fun P5ProjectScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            // AI Status Banner
+            item {
+                val isAiOnline = remember { com.example.data.ai.GeminiService.isAvailable(context) }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isAiOnline) 
+                            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.35f)
+                        else 
+                            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f)
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (isAiOnline) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f)
+                        else MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (isAiOnline) MaterialTheme.colorScheme.tertiary
+                                    else MaterialTheme.colorScheme.secondary
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (isAiOnline) Icons.Default.AutoAwesome else Icons.Default.Storage,
+                                contentDescription = null,
+                                tint = if (isAiOnline) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSecondary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = if (isAiOnline) "AI Online Aktif (Gemini AI)" else "Mode Offline Standar Kurikulum",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isAiOnline) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                BadgeChip(
+                                    text = if (isAiOnline) "ONLINE" else "OFFLINE",
+                                    backgroundColor = if (isAiOnline) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary,
+                                    textColor = if (isAiOnline) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSecondary
+                                )
+                            }
+                            Text(
+                                text = if (isAiOnline) 
+                                    "Penyusunan modul projek P5 otomatis dengan dimensi profil pelajar Pancasila & tahapan mendalam berbasis Google Gemini AI."
+                                else 
+                                    "Penyusunan modul projek P5 berbasis mesin offline dengan template tema dan tahapan Kurikulum Merdeka standar.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
             // Pemilihan Tema P5
             item {
                 Card(
@@ -139,6 +222,25 @@ fun P5ProjectScreen(
                             modifier = Modifier.fillMaxWidth().testTag("input_p5_topic")
                         )
 
+                        val suggestedTopics = remember(selectedTema, selectedFase) {
+                            P5ReferenceData.getTopikForFase(selectedTema.id, selectedFase.code)
+                        }
+
+                        Text(
+                            text = "Contoh Topik Sesuai ${selectedFase.code} (${selectedFase.grades.joinToString()}):",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            items(suggestedTopics) { topic ->
+                                SuggestionChip(
+                                    onClick = { topikProjek = topic },
+                                    label = { Text(topic, fontSize = 11.sp) }
+                                )
+                            }
+                        }
+
                         OutlinedTextField(
                             value = alokasiWaktu,
                             onValueChange = { alokasiWaktu = it },
@@ -149,38 +251,69 @@ fun P5ProjectScreen(
                 }
             }
 
-            // Tombol Generate
+            // Tombol Generate & Riwayat
             item {
-                Button(
-                    onClick = {
-                        isGenerating = true
-                        val profile = TeacherProfile.loadFromPreferences(context)
-                        generatedP5Modul = OfflineP5Engine.generateP5Modul(
-                            temaTitle = selectedTema.title,
-                            topikProjek = topikProjek.ifBlank { "Aksi Peduli Lingkungan & Karakter" },
-                            fase = selectedFase.code,
-                            grade = selectedFase.grades.first(),
-                            alokasiWaktu = alokasiWaktu,
-                            selectedDimensi = selectedDimensiList,
-                            teacherName = profile.teacherName,
-                            schoolName = profile.schoolName
-                        )
-                        isGenerating = false
-                        Toast.makeText(context, "Modul Projek P5 Berhasil Dibuat!", Toast.LENGTH_SHORT).show()
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                        .testTag("btn_generate_p5"),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                ) {
-                    Icon(Icons.Default.AutoAwesome, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Susun Modul Projek P5 Otomatis", fontWeight = FontWeight.Bold)
+                val isGenerating by viewModel.isGeneratingP5.collectAsStateWithLifecycle()
+                val isAiOnline = remember { com.example.data.ai.GeminiService.isAvailable(context) }
+                val profile = remember { TeacherProfile.loadFromPreferences(context) }
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            viewModel.generateP5ModulWithAI(
+                                temaTitle = selectedTema.title,
+                                topikProjek = topikProjek.ifBlank { "Aksi Peduli Lingkungan & Karakter" },
+                                fase = selectedFase.code,
+                                grade = selectedFase.grades.first(),
+                                alokasiWaktu = alokasiWaktu,
+                                selectedDimensi = selectedDimensiList,
+                                teacherName = profile.teacherName,
+                                schoolName = profile.schoolName
+                            ) { modul ->
+                                generatedP5Modul = modul
+                                Toast.makeText(context, "Modul Projek P5 Berhasil Disusun!", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .testTag("btn_generate_p5"),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        enabled = !isGenerating
+                    ) {
+                        if (isGenerating) {
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(22.dp),
+                                strokeWidth = 2.5.dp
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text("Gemini AI Sedang Menyusun P5...", fontWeight = FontWeight.Bold)
+                        } else {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                if (isAiOnline) "Susun Modul P5 dengan Gemini AI" else "Susun Modul P5 (Offline Engine)",
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    OutlinedButton(
+                        onClick = { showHistoryDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Riwayat Modul P5 Tersimpan (${savedP5Assessments.size})", fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
 
@@ -226,42 +359,62 @@ fun P5ProjectScreen(
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
                             )
 
-                            // Action buttons: Cetak PDF & Unduh Word
-                            Row(
+                            // Action buttons: Cetak PDF, Unduh Word, Simpan DB
+                            Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Button(
-                                    onClick = { DocumentExporter.printOrSaveP5Pdf(context, p5) },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(8.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                        contentColor = MaterialTheme.colorScheme.onPrimary
-                                    )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Cetak PDF", fontSize = 12.sp)
+                                    Button(
+                                        onClick = { DocumentExporter.printOrSaveP5Pdf(context, p5) },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary,
+                                            contentColor = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    ) {
+                                        Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Cetak PDF", fontSize = 12.sp)
+                                    }
+
+                                    OutlinedButton(
+                                        onClick = {
+                                            val uri = DocumentExporter.exportP5ToWordDoc(context, p5)
+                                            if (uri != null) {
+                                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                                    setDataAndType(uri, "application/msword")
+                                                    flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
+                                                }
+                                                context.startActivity(Intent.createChooser(intent, "Buka Dokumen Modul P5"))
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Unduh Word", fontSize = 12.sp)
+                                    }
                                 }
 
                                 OutlinedButton(
                                     onClick = {
-                                        val uri = DocumentExporter.exportP5ToWordDoc(context, p5)
-                                        if (uri != null) {
-                                            val intent = Intent(Intent.ACTION_VIEW).apply {
-                                                setDataAndType(uri, "application/msword")
-                                                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
-                                            }
-                                            context.startActivity(Intent.createChooser(intent, "Buka Dokumen Modul P5"))
+                                        viewModel.saveP5AssessmentToHistory(p5) { id ->
+                                            Toast.makeText(context, "Modul P5 Disimpan ke Database Lokal (ID: $id)", Toast.LENGTH_SHORT).show()
                                         }
                                     },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(8.dp)
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
                                 ) {
-                                    Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Unduh Word", fontSize = 12.sp)
+                                    Text("Simpan ke Riwayat (Room DB)", fontSize = 12.sp)
                                 }
                             }
                         }
@@ -330,5 +483,73 @@ fun P5ProjectScreen(
                 Spacer(modifier = Modifier.height(20.dp))
             }
         }
+    }
+
+    if (showHistoryDialog) {
+        AlertDialog(
+            onDismissRequest = { showHistoryDialog = false },
+            title = { Text("Riwayat Modul P5 Tersimpan") },
+            text = {
+                if (savedP5Assessments.isEmpty()) {
+                    Text("Belum ada riwayat modul P5 yang disimpan di database lokal.")
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().height(300.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(savedP5Assessments) { item ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(item.title, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text("Tema: ${item.tema} | ${item.fase} (${item.grade})", fontSize = 11.sp)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        TextButton(
+                                            onClick = {
+                                                try {
+                                                    val parsedModul = com.squareup.moshi.Moshi.Builder()
+                                                        .add(com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory())
+                                                        .build()
+                                                        .adapter(P5ProjectModul::class.java)
+                                                        .fromJson(item.jsonContent)
+                                                    if (parsedModul != null) {
+                                                        generatedP5Modul = parsedModul
+                                                        showHistoryDialog = false
+                                                        Toast.makeText(context, "Memuat modul P5 dari riwayat!", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                } catch (e: Exception) {
+                                                    Toast.makeText(context, "Gagal memuat riwayat P5", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        ) {
+                                            Text("Muat")
+                                        }
+                                        TextButton(
+                                            onClick = {
+                                                viewModel.deleteP5AssessmentHistory(item.id)
+                                                Toast.makeText(context, "Riwayat P5 dihapus", Toast.LENGTH_SHORT).show()
+                                            }
+                                        ) {
+                                            Text("Hapus", color = MaterialTheme.colorScheme.error)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showHistoryDialog = false }) {
+                    Text("Tutup")
+                }
+            }
+        )
     }
 }

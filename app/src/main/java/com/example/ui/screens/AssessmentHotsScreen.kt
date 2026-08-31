@@ -49,7 +49,10 @@ fun AssessmentHotsScreen(
     var materiTopik by remember { mutableStateOf("Pecahan Senilai & Perbandingan") }
     var jenisAsesmen by remember { mutableStateOf("Asesmen Sumatif Akhir Bab") }
     var jumlahSoal by remember { mutableStateOf(5) }
+    var pgRatioPercent by remember { mutableStateOf(60f) }
+    var showHistoryDialog by remember { mutableStateOf(false) }
 
+    val savedAssessments by viewModel.allSavedAssessments.collectAsStateWithLifecycle(initialValue = emptyList())
     var assessmentDoc by remember { mutableStateOf<AssessmentDocument?>(null) }
     val isAiOnline = remember { GeminiService.isAvailable(context) }
 
@@ -237,65 +240,90 @@ fun AssessmentHotsScreen(
                             steps = 3,
                             modifier = Modifier.fillMaxWidth().testTag("slider_jumlah_soal")
                         )
+
+                        // Rasio Pilihan Ganda (PG vs Uraian)
+                        Text("Rasio Pilihan Ganda: ${pgRatioPercent.toInt()}% PG / ${(100 - pgRatioPercent).toInt()}% Uraian", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        Slider(
+                            value = pgRatioPercent,
+                            onValueChange = { pgRatioPercent = it },
+                            valueRange = 40f..80f,
+                            steps = 3,
+                            modifier = Modifier.fillMaxWidth().testTag("slider_pg_ratio")
+                        )
                     }
                 }
             }
 
-            // Tombol Generate Soal (Terkoneksi Langsung ke Gemini AI)
+            // Tombol Generate Soal & Riwayat
             item {
                 val isGenerating by viewModel.isGeneratingAssessment.collectAsStateWithLifecycle()
                 val profile = remember { TeacherProfile.loadFromPreferences(context) }
                 val targetGrade = selectedFase.grades.firstOrNull() ?: "Kelas X"
                 val targetSemester = profile.defaultSemester.ifBlank { "Semester 1 (Ganjil)" }
 
-                Button(
-                    onClick = {
-                        viewModel.generateKisiKisiHotsWithAI(
-                            subject = selectedSubject,
-                            fase = selectedFase.code,
-                            grade = targetGrade,
-                            topic = materiTopik.ifBlank { "Materi Pokok Esensial" },
-                            jenisAsesmen = jenisAsesmen,
-                            semester = targetSemester,
-                            count = jumlahSoal.toInt()
-                        ) { doc ->
-                            assessmentDoc = doc
-                            val sourceMsg = if (doc.isOnlineAiGenerated) "Gemini AI" else "Offline Engine"
-                            Toast.makeText(context, "Kisi-Kisi & Soal HOTS Berhasil Disusun via $sourceMsg!", Toast.LENGTH_SHORT).show()
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            viewModel.generateKisiKisiHotsWithAI(
+                                subject = selectedSubject,
+                                fase = selectedFase.code,
+                                grade = targetGrade,
+                                topic = materiTopik.ifBlank { "Materi Pokok Esensial" },
+                                jenisAsesmen = jenisAsesmen,
+                                semester = targetSemester,
+                                count = jumlahSoal.toInt(),
+                                pgRatioPercent = pgRatioPercent.toInt()
+                            ) { doc ->
+                                assessmentDoc = doc
+                                val sourceMsg = if (doc.isOnlineAiGenerated) "Gemini AI" else "Offline Engine"
+                                Toast.makeText(context, "Kisi-Kisi & Soal HOTS Berhasil Disusun via $sourceMsg!", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .testTag("btn_generate_assessment"),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        enabled = !isGenerating
+                    ) {
+                        if (isGenerating) {
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(22.dp),
+                                strokeWidth = 2.5.dp
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                if (isAiOnline) "Gemini AI Menyusun Kisi-Kisi & Soal HOTS..." else "Engine Menyusun Kisi-Kisi & Soal HOTS...",
+                                fontWeight = FontWeight.Bold
+                            )
+                        } else {
+                            Icon(
+                                imageVector = if (isAiOnline) Icons.Default.AutoAwesome else Icons.Default.AutoFixHigh,
+                                contentDescription = null
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                if (isAiOnline) "Susun Kisi-Kisi & Soal HOTS (Gemini AI)" else "Susun Kisi-Kisi & Soal HOTS (Offline Engine)",
+                                fontWeight = FontWeight.Bold
+                            )
                         }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                        .testTag("btn_generate_assessment"),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    enabled = !isGenerating
-                ) {
-                    if (isGenerating) {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(22.dp),
-                            strokeWidth = 2.5.dp
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            if (isAiOnline) "Gemini AI Menyusun Kisi-Kisi & Soal HOTS..." else "Engine Menyusun Kisi-Kisi & Soal HOTS...",
-                            fontWeight = FontWeight.Bold
-                        )
-                    } else {
-                        Icon(
-                            imageVector = if (isAiOnline) Icons.Default.AutoAwesome else Icons.Default.AutoFixHigh,
-                            contentDescription = null
-                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = { showHistoryDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            if (isAiOnline) "Susun Kisi-Kisi & Soal HOTS (Gemini AI)" else "Susun Kisi-Kisi & Soal HOTS (Offline Engine)",
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text("Riwayat Asesmen Tersimpan (${savedAssessments.size})", fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -414,6 +442,21 @@ fun AssessmentHotsScreen(
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text("Unduh Word", fontSize = 12.sp)
                                 }
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    viewModel.saveAssessmentToHistory(doc) { id ->
+                                        Toast.makeText(context, "Berhasil Disimpan ke Database Lokal (ID: $id)", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                            ) {
+                                Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Simpan ke Riwayat (Room DB)", fontSize = 12.sp)
                             }
                         }
                     }
@@ -568,5 +611,73 @@ fun AssessmentHotsScreen(
                 Spacer(modifier = Modifier.height(20.dp))
             }
         }
+    }
+
+    if (showHistoryDialog) {
+        AlertDialog(
+            onDismissRequest = { showHistoryDialog = false },
+            title = { Text("Riwayat Asesmen Tersimpan") },
+            text = {
+                if (savedAssessments.isEmpty()) {
+                    Text("Belum ada riwayat asesmen yang disimpan di database lokal.")
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().height(300.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(savedAssessments) { item ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(item.title, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text("Topik: ${item.topikUjian} | ${item.jumlahSoal} Soal", fontSize = 11.sp)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        TextButton(
+                                            onClick = {
+                                                try {
+                                                    val parsedDoc = com.squareup.moshi.Moshi.Builder()
+                                                        .add(com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory())
+                                                        .build()
+                                                        .adapter(AssessmentDocument::class.java)
+                                                        .fromJson(item.jsonContent)
+                                                    if (parsedDoc != null) {
+                                                        assessmentDoc = parsedDoc
+                                                        showHistoryDialog = false
+                                                        Toast.makeText(context, "Memuat asesmen dari riwayat!", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                } catch (e: Exception) {
+                                                    Toast.makeText(context, "Gagal memuat riwayat", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        ) {
+                                            Text("Muat")
+                                        }
+                                        TextButton(
+                                            onClick = {
+                                                viewModel.deleteAssessmentHistory(item.id)
+                                                Toast.makeText(context, "Riwayat dihapus", Toast.LENGTH_SHORT).show()
+                                            }
+                                        ) {
+                                            Text("Hapus", color = MaterialTheme.colorScheme.error)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showHistoryDialog = false }) {
+                    Text("Tutup")
+                }
+            }
+        )
     }
 }

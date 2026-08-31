@@ -224,8 +224,9 @@ fun GeneratorWizardScreen(
                 item {
                     Text("Mata Pelajaran:", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.height(6.dp))
+                    val subjects = remember(selectedFase) { KurikulumMerdekaReferenceData.getSubjectsForFase(selectedFase.code) }
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(KurikulumMerdekaReferenceData.MATA_PELAJARAN_LIST) { subjectName ->
+                        items(subjects) { subjectName ->
                             val isSelected = selectedSubject == subjectName
                             FilterChip(
                                 selected = isSelected,

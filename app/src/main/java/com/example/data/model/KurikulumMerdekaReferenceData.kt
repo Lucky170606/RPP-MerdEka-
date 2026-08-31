@@ -28,18 +28,21 @@ object KurikulumMerdekaReferenceData {
         return when (fase) {
             "Fase A", "Fase B", "Fase C" -> listOf(
                 "Matematika", "Bahasa Indonesia", "Ilmu Pengetahuan Alam dan Sosial (IPAS)",
-                "Pendidikan Pancasila", "Bahasa Inggris", "Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)",
+                "Pendidikan Pancasila", "Bahasa Inggris", "Informatika",
+                "Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)",
                 "Seni Rupa", "Seni Musik", "Pendidikan Agama Islam dan Budi Pekerti"
             )
             "Fase D" -> listOf(
                 "Matematika", "Bahasa Indonesia", "Ilmu Pengetahuan Alam (IPA)", "Ilmu Pengetahuan Sosial (IPS)",
                 "Pendidikan Pancasila", "Bahasa Inggris", "Informatika",
-                "Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)", "Pendidikan Agama Islam dan Budi Pekerti"
+                "Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)",
+                "Seni Rupa", "Seni Musik", "Pendidikan Agama Islam dan Budi Pekerti"
             )
             "Fase E", "Fase F" -> listOf(
                 "Matematika", "Bahasa Indonesia", "Bahasa Inggris", "Pendidikan Pancasila", "Informatika",
                 "Fisika", "Biologi", "Kimia", "Sejarah", "Geografi", "Ekonomi", "Sosiologi",
-                "Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)", "Pendidikan Agama Islam dan Budi Pekerti"
+                "Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)",
+                "Seni Rupa", "Seni Musik", "Pendidikan Agama Islam dan Budi Pekerti"
             )
             else -> MATA_PELAJARAN_LIST
         }

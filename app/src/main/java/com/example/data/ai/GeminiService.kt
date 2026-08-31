@@ -6,6 +6,7 @@ import com.example.data.model.AssessmentDocument
 import com.example.data.model.GeneratedModulContent
 import com.example.data.model.KisiKisiItem
 import com.example.data.model.SoalHotsItem
+import com.example.data.model.P5ProjectModul
 import com.example.util.ApiKeyManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -482,8 +483,7 @@ object GeminiService {
     }
 
     fun isAvailable(context: Context): Boolean {
-        val key = ApiKeyManager.getApiKey(context)
-        return !key.isNullOrBlank()
+        return ApiKeyManager.hasUserApiKey(context)
     }
 
     suspend fun generateText(context: Context, promptText: String): String = withContext(Dispatchers.IO) {
@@ -698,6 +698,190 @@ object GeminiService {
                 jumlahSoal = count
             )
             return@withContext Result.success(offlineDoc)
+        }
+    }
+
+    suspend fun generateP5Modul(
+        context: Context,
+        temaTitle: String,
+        topikProjek: String,
+        fase: String,
+        grade: String,
+        alokasiWaktu: String,
+        selectedDimensi: List<String>,
+        teacherName: String,
+        schoolName: String
+    ): Result<P5ProjectModul> = withContext(Dispatchers.IO) {
+        val apiKey = ApiKeyManager.getApiKey(context)
+        if (apiKey.isNullOrBlank()) {
+            val fallbackModul = OfflineP5Engine.generateP5Modul(
+                temaTitle = temaTitle,
+                topikProjek = topikProjek,
+                fase = fase,
+                grade = grade,
+                alokasiWaktu = alokasiWaktu,
+                selectedDimensi = selectedDimensi,
+                teacherName = teacherName,
+                schoolName = schoolName
+            )
+            return@withContext Result.success(fallbackModul)
+        }
+
+        val prompt = """
+            Anda adalah Konsultan Kurikulum Merdeka & Fasilitator Projek Penguatan Profil Pelajar Pancasila (P5) ahli.
+            Buatkan Modul Projek P5 yang komprehensif, mendalam, dan operasional dalam format JSON murni.
+
+            PARAMETER PROJEK P5:
+            - Tema P5 Resmi: $temaTitle
+            - Topik Spesifik Projek: $topikProjek
+            - Fase / Jenjang: $fase (Kelas $grade)
+            - Alokasi Waktu: $alokasiWaktu
+            - Target Dimensi Profil Pelajar Pancasila: ${selectedDimensi.joinToString(", ")}
+            - Guru Penyusun: $teacherName
+            - Satuan Pendidikan: $schoolName
+
+            Struktur JSON wajib memiliki key berikut:
+            {
+              "title": "Judul Modul P5 yang Inspiratif",
+              "deskripsiSingkat": "Deskripsi latar belakang dan urgensi pelaksanaan projek P5 ini.",
+              "tujuanProjek": "Tujuan akhir dan kompetensi yang ingin dicapai peserta didik.",
+              "targetDimensi": ["Dimensi 1", "Dimensi 2"],
+              "targetElemen": ["Elemen Sub-Elemen 1", "Elemen Sub-Elemen 2"],
+              "timeAllocation": "$alokasiWaktu",
+              "alurTahapan": [
+                {
+                  "tahap": "Tahap 1: Pengenalan",
+                  "namaAktivitas": "Nama kegiatan eksplorasi",
+                  "alokasiJp": "12 JP",
+                  "deskripsiLangkah": "Langkah detail kegiatan pengenalan...",
+                  "peranGuru": "Fasilitator & motivator...",
+                  "peranSiswa": "Aktif mengamati dan bertanya...",
+                  "asesmenFormatif": "Observasi keaktifan"
+                },
+                {
+                  "tahap": "Tahap 2: Kontekstualisasi",
+                  "namaAktivitas": "Nama kegiatan kontekstual",
+                  "alokasiJp": "16 JP",
+                  "deskripsiLangkah": "Langkah detail kontekstualisasi...",
+                  "peranGuru": "Pendamping analisis...",
+                  "peranSiswa": "Diskusi kelompok...",
+                  "asesmenFormatif": "Lembar kerja kelompok"
+                },
+                {
+                  "tahap": "Tahap 3: Aksi Nyata",
+                  "namaAktivitas": "Aksi bersama / unjuk karya",
+                  "alokasiJp": "24 JP",
+                  "deskripsiLangkah": "Langkah pelaksanaan aksi nyata...",
+                  "peranGuru": "Mentor pendamping...",
+                  "peranSiswa": "Membuat produk / aksi...",
+                  "asesmenFormatif": "Rubrik penilaian unjuk kerja"
+                },
+                {
+                  "tahap": "Tahap 4: Refleksi & Tindak Lanjut",
+                  "namaAktivitas": "Evaluasi & Refleksi",
+                  "alokasiJp": "8 JP",
+                  "deskripsiLangkah": "Refleksi akhir dan tindak lanjut berkelanjutan...",
+                  "peranGuru": "Reflektor & evaluator...",
+                  "peranSiswa": "Menuliskan jurnal refleksi...",
+                  "asesmenFormatif": "Jurnal refleksi siswa"
+                }
+              ],
+              "rubrikAsesmen": "Rubrik penilaian perkembangan sub-elemen P5: Belum Berkembang (BB), Mulai Berkembang (MB), Berkembang Sesuai Harapan (BSH), Sangat Berkembang (SB).",
+              "lembarRefleksi": "Pertanyaan pemantik refleksi untuk peserta didik dan fasilitator."
+            }
+        """.trimIndent()
+
+        try {
+            val executionResult = executeWithRetryAndFallback(context, prompt, isJsonResponse = true, temperature = 0.5)
+            val textOutput = executionResult.getOrThrow()
+            val cleanJsonString = cleanJson(textOutput)
+
+            val jsonObject = JSONObject(cleanJsonString)
+            val title = jsonObject.optString("title", "Modul Projek P5: $topikProjek")
+            val deskripsiSingkat = jsonObject.optString("deskripsiSingkat", "Projek P5 bertema $temaTitle dengan fokus $topikProjek.")
+            val tujuanProjek = jsonObject.optString("tujuanProjek", "Peserta didik mampu menginternalisasi nilai Profil Pelajar Pancasila.")
+            val rubrikAsesmen = jsonObject.optString("rubrikAsesmen", "Rubrik Asesmen P5 Kurikulum Merdeka.")
+            val lembarRefleksi = jsonObject.optString("lembarRefleksi", "Lembar refleksi pelaksanaan projek.")
+
+            val dimensiArray = jsonObject.optJSONArray("targetDimensi")
+            val dimensiList = mutableListOf<String>()
+            if (dimensiArray != null) {
+                for (i in 0 until dimensiArray.length()) {
+                    dimensiList.add(dimensiArray.getString(i))
+                }
+            }
+            if (dimensiList.isEmpty()) dimensiList.addAll(selectedDimensi)
+
+            val elemenArray = jsonObject.optJSONArray("targetElemen")
+            val elemenList = mutableListOf<String>()
+            if (elemenArray != null) {
+                for (i in 0 until elemenArray.length()) {
+                    elemenList.add(elemenArray.getString(i))
+                }
+            }
+            if (elemenList.isEmpty()) elemenList.addAll(listOf("Akhir kepada Alam", "Kolaborasi", "Memperoleh dan memproses informasi"))
+
+            val alurArray = jsonObject.optJSONArray("alurTahapan")
+            val alurList = mutableListOf<com.example.data.model.P5TahapanItem>()
+            if (alurArray != null) {
+                for (i in 0 until alurArray.length()) {
+                    val item = alurArray.getJSONObject(i)
+                    alurList.add(
+                        com.example.data.model.P5TahapanItem(
+                            tahap = item.optString("tahap", "Tahap ${i + 1}"),
+                            namaAktivitas = item.optString("namaAktivitas", "Aktivitas Projek"),
+                            alokasiJp = item.optString("alokasiJp", "10 JP"),
+                            deskripsiLangkah = item.optString("deskripsiLangkah", "Langkah pelaksanaan..."),
+                            peranGuru = item.optString("peranGuru", "Fasilitator"),
+                            peranSiswa = item.optString("peranSiswa", "Peserta aktif"),
+                            asesmenFormatif = item.optString("asesmenFormatif", "Observasi")
+                        )
+                    )
+                }
+            }
+
+            if (alurList.isEmpty()) {
+                val fallbackModul = OfflineP5Engine.generateP5Modul(
+                    temaTitle = temaTitle,
+                    topikProjek = topikProjek,
+                    fase = fase,
+                    grade = grade,
+                    alokasiWaktu = alokasiWaktu,
+                    selectedDimensi = selectedDimensi,
+                    teacherName = teacherName,
+                    schoolName = schoolName
+                )
+                return@withContext Result.success(fallbackModul)
+            }
+
+            val modul = P5ProjectModul(
+                tema = temaTitle,
+                title = title,
+                fase = fase,
+                grade = grade,
+                timeAllocation = alokasiWaktu,
+                targetDimensi = dimensiList,
+                targetElemen = elemenList,
+                deskripsiSingkat = deskripsiSingkat,
+                tujuanProjek = tujuanProjek,
+                alurTahapan = alurList,
+                rubrikAsesmen = rubrikAsesmen,
+                lembarRefleksi = lembarRefleksi
+            )
+            return@withContext Result.success(modul)
+        } catch (e: Exception) {
+            Log.e(TAG, "Gemini P5 generation failed: ${e.message}, falling back to offline engine", e)
+            val fallbackModul = OfflineP5Engine.generateP5Modul(
+                temaTitle = temaTitle,
+                topikProjek = topikProjek,
+                fase = fase,
+                grade = grade,
+                alokasiWaktu = alokasiWaktu,
+                selectedDimensi = selectedDimensi,
+                teacherName = teacherName,
+                schoolName = schoolName
+            )
+            return@withContext Result.success(fallbackModul)
         }
     }
 }

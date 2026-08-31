@@ -13,27 +13,31 @@ object OfflineAssessmentEngine {
         topic: String,
         jenisAsesmen: String,
         semester: String,
-        jumlahSoal: Int
+        jumlahSoal: Int,
+        pgRatioPercent: Int = 60 // Fleksibel: persentase soal PG (default 60%, sisanya Uraian)
     ): AssessmentDocument {
         val count = jumlahSoal.coerceIn(3, 20)
+        val pgCount = ((count * pgRatioPercent) / 100).coerceIn(1, count - 1).let { if (count == 3) 2 else it }
+        val uraianCount = count - pgCount
 
         val kisiList = mutableListOf<KisiKisiItem>()
         val soalList = mutableListOf<SoalHotsItem>()
 
-        // Differentiate cognitive levels and scenarios based on fase, subject, and jenisAsesmen
         val (levelKognitifList, scenarios) = getSubjectSpecificScenarios(subject, fase, topic, jenisAsesmen)
 
         for (i in 1..count) {
             val level = levelKognitifList[(i - 1) % levelKognitifList.size]
-            val bentuk = if (i <= (count * 0.6).toInt().coerceAtLeast(2)) "Pilihan Ganda (PG)" else "Uraian Analisis Kasus"
+            val bentuk = if (i <= pgCount) "Pilihan Ganda (PG)" else "Uraian Analisis Kasus"
             val scenario = scenarios[(i - 1) % scenarios.size]
+
+            val capaianElemen = getCapaianPembelajaranForSubject(subject, fase, topic)
 
             kisiList.add(
                 KisiKisiItem(
                     nomorUrut = i,
-                    capaianElemen = "Pemahaman & Penerapan Konseptual $subject ($topic)",
-                    materiPokok = "$topic (Fokus Aspek $i)",
-                    indikatorSoal = "Disajikan ${scenario.first.lowercase()} terkait $topic, peserta didik mampu $level secara kritis dan solutif.",
+                    capaianElemen = capaianElemen,
+                    materiPokok = "$topic (Sub-Elemen Pengujian #${i})",
+                    indikatorSoal = "Disajikan ${scenario.first.lowercase()} berkaitan dengan $topic pada konteks nyata $subject, peserta didik mampu $level secara kritis, analitis, dan solutif.",
                     levelKognitif = level,
                     bentukSoal = bentuk,
                     nomorSoal = i
@@ -49,10 +53,10 @@ object OfflineAssessmentEngine {
                 }
 
                 val options = listOf(
-                    "A. Melakukan kalibrasi ulang instrumen ukur dan mengontrol variabel luar yang dapat mendistorsi hasil eksperimen $topic.",
-                    "B. Mengabaikan data outlier yang menyimpang jauh dari rata-rata kelompok tanpa dokumentasi logis.",
-                    "C. Mengubah hipotesis awal agar sesuai dengan tren data empiris yang diperoleh di lapangan secara instan.",
-                    "D. Menyamakan seluruh parameter pengamatan tanpa memperhitungkan perbedaan karakteristik subjek uji."
+                    "A. Melakukan analisis mendalam terhadap parameter $topic serta mengendalikan variabel pengganggu untuk memastikan validitas kesimpulan.",
+                    "B. Mengabaikan anomali data empiris yang muncul di lapangan tanpa melakukan verifikasi ulang secara metodologis.",
+                    "C. Mengubah asumsi dasar secara sepihak agar hasil perhitungan sesuai dengan estimasi awal tanpa dasar teoretis.",
+                    "D. Menyamakan seluruh variabel pengamatan tanpa memperhitungkan perbedaan karakteristik kondisi dan lingkungan."
                 )
 
                 soalList.add(
@@ -60,12 +64,12 @@ object OfflineAssessmentEngine {
                         nomor = i,
                         bentukSoal = "Pilihan Ganda",
                         levelKognitif = level,
-                        stimulusText = "${scenario.first}\n${scenario.second}\nTopik Kajian: $subject - $topic (Butir Soal #$i)",
+                        stimulusText = "Ilustrasi Kontekstual & Studi Kasus Pembelajaran:\n${scenario.first}\n${scenario.second}\nFokus Kajian Materi: $subject - $topic (Butir Soal Nomor $i)",
                         pertanyaan = scenario.third,
                         pilihanOpsi = options,
                         kunciJawaban = correctKey,
-                        pembahasanDanAlasan = "Pembahasan Soal #$i: Pilihan $correctKey adalah jawaban paling tepat karena didasarkan pada prinsip metodologi ilmiah $subject pada materi $topic, di mana pengendalian variabel dan validasi data menjadi pilar utama objektivitas.",
-                        skorMaksimal = 10
+                        pembahasanDanAlasan = "Analisis dan Pembahasan Soal #${i}: Pilihan $correctKey adalah jawaban paling tepat karena mencerminkan penalaran tingkat tinggi (HOTS) berbasis prinsip keilmuan $subject, di mana pemecahan masalah menuntut ketepatan analisis, verifikasi data, dan logika berpikir logis.",
+                        skorMaksimal = 5
                     )
                 )
             } else {
@@ -74,32 +78,37 @@ object OfflineAssessmentEngine {
                         nomor = i,
                         bentukSoal = "Uraian Analisis Kasus",
                         levelKognitif = level,
-                        stimulusText = "${scenario.first}\nKompleksitas Masalah Uraian #$i untuk materi '$topic' dalam bidang $subject:\n${scenario.second}",
-                        pertanyaan = "1) Lakukan analisis kritis terhadap akar permasalahan utama pada kasus $topic di atas dengan menguraikan minimal 2 faktor penyebab utama!\n2) Susunlah rancangan solusi operasional yang inovatif, terukur, dan dapat diimplementasikan secara berkelanjutan!",
+                        stimulusText = "Kompleksitas Studi Kasus Uraian Mendalam #${i}:\n${scenario.first}\n${scenario.second}\nDalam konteks penerapan Kurikulum Merdeka pada mata pelajaran $subject materi '$topic', dituntut kemampuan berpikir kritis tingkat tinggi.",
+                        pertanyaan = "1) Uraikan analisis kritis mengenai faktor pendorong serta hambatan utama yang dihadapi dalam penerapan konsep $topic pada kasus di atas!\n2) Rumuskan rancangan tindakan atau solusi inovatif yang terukur beserta argumen ilmiah yang mendasarinya!",
                         pilihanOpsi = emptyList(),
-                        kunciJawaban = "Pedoman Kunci Jawaban Uraian #$i:\n1. Analisis Faktor Penyebab: Mengidentifikasi faktor teknis dan non-teknis terkait $topic secara komprehensif.\n2. Rancangan Solusi: Menyediakan langkah aksi terstruktur yang memadukan prinsip teoretis $subject dengan kearifan lokal atau teknologi tepat guna.",
-                        pembahasanDanAlasan = "Rubrik Penilaian Uraian #$i:\n• Skor 20: Analisis sangat tajam (2+ faktor) + Solusi inovatif dan terukur.\n• Skor 15: Analisis cukup mendalam namun solusi kurang operasional.\n• Skor 10: Analisis terbatas pada permukaan masalah.\n• Skor 5: Jawaban kurang relevan dengan esensi $topic.",
+                        kunciJawaban = "Pedoman Kunci Jawaban Uraian #${i}:\n1. Analisis Komprehensif: Menguraikan minimal 2 faktor pendukung dan 2 kendala faktual secara sistematis.\n2. Solusi Inovatif: Menyusun langkah taktis operasional yang memadukan teori $subject dengan konteks nyata kehidupan peserta didik.",
+                        pembahasanDanAlasan = "Rubrik Penilaian Penskoran Uraian #${i}:\n• Skor 20-25: Menunjukkan analisis sangat tajam, komprehensif, dan menyajikan solusi solutif yang aplikatif.\n• Skor 15-19: Analisis cukup mendalam namun penjelasan solusi kurang terperinci.\n• Skor 10-14: Analisis terbatas pada permukaan masalah.\n• Skor 5-9: Jawaban kurang relevan dengan substansi $topic.",
                         skorMaksimal = 20
                     )
                 )
             }
         }
 
+        val totalPgScore = pgCount * 5
+        val totalUraianScore = uraianCount * 20
+        val maxTotalScore = totalPgScore + totalUraianScore
+
         val pedoman = """
-        PEDOMAN PENSKORAN & PENILAIAN NILAI AKHIR (NA):
-        1. Nilai Soal Pilihan Ganda = (Jumlah Benar / Jumlah Soal PG) x 100
-        2. Nilai Soal Uraian = (Total Skor Perolehan Uraian / Total Skor Maksimal Uraian) x 100
-        3. Nilai Akhir (NA) = (60% x Nilai PG) + (40% x Nilai Uraian)
+        PEDOMAN PENSKORAN & ANALISIS HASIL ASESMEN KURIKULUM MERDEKA:
+        1. Bobot Soal: Pilihan Ganda (5 poin/butir), Uraian Analisis Kasus (20 poin/butir).
+        2. Rumus Penghitungan Nilai Akhir (NA): 
+           NA = (Total Perolehan Skor Siswa / $maxTotalScore) x 100
+        3. Proporsi Butir Soal: $pgCount Pilihan Ganda ($pgRatioPercent%) & $uraianCount Uraian Analisis (${100 - pgRatioPercent}%).
         
         Kriteria Ketercapaian Tujuan Pembelajaran (KKTP):
-        • 0 - 65%   : Belum Mencapai TP (Perlu Remedial di seluruh materi)
-        • 66 - 75%  : Cukup Mencapai TP (Perlu Remedial di indikator yang belum tuntas)
-        • 76 - 88%  : Sudah Mencapai TP (Tuntas)
-        • 89 - 100% : Sangat Mahir Mencapai TP (Diberikan materi Pengayaan/Tantangan HOTS Lanjut)
+        • 0 - 64   : Belum Tercapai (Wajib Remedial Komprehensif)
+        • 65 - 75  : Cukup Tercapai (Remedial pada Indikator Tertentu)
+        • 76 - 88  : Sudah Tercapai / Tuntas (Kompetensi Baik)
+        • 89 - 100 : Sangat Mahir / Istimewa (Diberikan Tantangan Pengayaan HOTS Lanjut)
         """.trimIndent()
 
         return AssessmentDocument(
-            title = "Kisi-Kisi & Bank Soal Asesmen: $subject - $topic",
+            title = "Kisi-Kisi & Bank Soal HOTS: $subject - $topic",
             subject = subject,
             fase = fase,
             grade = grade,
@@ -111,75 +120,72 @@ object OfflineAssessmentEngine {
             soalList = soalList,
             pedomanPenskoran = pedoman,
             isOnlineAiGenerated = false,
-            engineName = "Engine Standar Kurikulum (Offline)"
+            engineName = "Offline Smart Engine (Kurikulum Merdeka v3)"
         )
+    }
+
+    private fun getCapaianPembelajaranForSubject(subject: String, fase: String, topic: String): String {
+        return when (subject) {
+            "Matematika" -> "Peserta didik dapat menggeneralisasi pemahaman $topic melalui penalaran proporsional, pemecahan masalah numerik, dan pemodelan matematis."
+            "Bahasa Indonesia" -> "Peserta didik mampu mengevaluasi gagasan, informasi, dan pesan dari teks multimodal bertema $topic secara kritis dan kreatif."
+            "Bahasa Inggris" -> "Students are able to analyze, interpret, and respond to spoken and written transactional texts regarding $topic effectively."
+            "IPAS", "IPA" -> "Peserta didik mampu melakukan penyelidikan ilmiah, menganalisis gejala alam dan sosial terkait $topic, serta merumuskan argumen berbasis bukti."
+            "IPS", "Sejarah", "Geografi", "Ekonomi", "Sosiologi" -> "Peserta didik memahami pola interaksi sosial, ekonomi, dan spasial yang berkaitan dengan $topic dalam dinamika masyarakat."
+            "Pendidikan Pancasila" -> "Peserta didik menunjukkan kesadaran nilai-nilai Pancasila dan kewarganegaraan dalam menganalisis kasus $topic."
+            else -> "Peserta didik menguasai konsep esensial, menganalisis studi kasus, dan mengaplikasikan pemecahan masalah pada materi $topic."
+        }
     }
 
     private fun getSubjectSpecificScenarios(subject: String, fase: String, topic: String, jenisAsesmen: String): Pair<List<String>, List<Triple<String, String, String>>> {
         val (baseLevels, scenarios) = when (subject) {
             "Matematika", "Fisika", "Kimia", "Biologi" -> when (fase) {
-                "Fase F" -> Pair(
+                "Fase F", "Fase E" -> Pair(
                     listOf("C4 (Menganalisis)", "C5 (Mengevaluasi)", "C6 (Mencipta)"),
                     listOf(
-                        Triple("Analisis Konseptual:", "Dalam model $topic, variabel yang saling bergantung menunjukkan tren nonlinear.", "Bagaimana cara melakukan optimasi terhadap model tersebut untuk hasil maksimal?"),
-                        Triple("Evaluasi Penerapan:", "$topic diterapkan dalam teknologi modern.", "Uraikan efisiensi dari model tersebut dalam konteks nyata!"),
-                        Triple("Kreasi Model:", "Fenomena $topic di dunia nyata.", "Rancanglah sebuah model untuk memprediksi perubahan $topic!")
+                        Triple("Eksperimen Laboratorium:", "Sebuah percobaan pengukuran fenomena $topic menghasilkan variasi data yang dipengaruhi oleh suhu dan tekanan.", "Bagaimana cara mengevaluasi galat pengukuran agar diperoleh nilai konstanta yang valid?"),
+                        Triple("Optimasi Sistem:", "Penerapan model matematika pada sistem $topic menunjukkan grafik non-linear dengan titik balik maksimum.", "Tentukan langkah analitis untuk menentukan nilai optimal dari sistem tersebut!"),
+                        Triple("Rancangan Pemodelan:", "Dibutuhkan rekayasa sistem untuk mengontrol laju perubahan $topic dalam skala industri.", "Rancanglah persamaan matematis atau skema eksperimen yang paling efektif!")
                     )
                 )
                 else -> Pair(
-                    listOf("C2 (Memahami)", "C3 (Menerapkan)"),
+                    listOf("C2 (Memahami)", "C3 (Menerapkan)", "C4 (Menganalisis)"),
                     listOf(
-                        Triple("Penerapan Dasar:", "Rumus $topic digunakan pada situasi X.", "Hitunglah nilai berdasarkan $topic!"),
-                        Triple("Eksplorasi:", "Pola $topic pada angka.", "Sebutkan pola yang terbentuk pada $topic!")
+                        Triple("Studi Kasus Kontekstual:", "Koperasi sekolah mencatat distribusi pembagian benda pada materi $topic untuk sejumlah kelompok belajar.", "Berapakah proporsi bagian yang diterima oleh masing-masing kelompok secara adil?"),
+                        Triple("Penerapan Pola Bilangan:", "Pola pertumbuhan objek pada materi $topic mengikuti urutan tertentu setiap pekannya.", "Analisis berapa jumlah akumulasi objek pada pekan kelima!"),
+                        Triple("Pemecahan Masalah Sehari-hari:", "Sebuah wadah penampungan air mengalami kebocoran yang berkaitan dengan konsep $topic.", "Bagaimana cara menghitung sisa volume air secara akurat?")
                     )
                 )
             }
             "Bahasa Indonesia", "Bahasa Inggris" -> when (fase) {
-                "Fase F" -> Pair(
+                "Fase F", "Fase E" -> Pair(
                     listOf("C4 (Menganalisis)", "C5 (Mengevaluasi)", "C6 (Mencipta)"),
                     listOf(
-                        Triple("Analisis Kritis:", "Sebuah teks mengenai $topic.", "Identifikasi bias atau sudut pandang penulis dalam teks tersebut!"),
-                        Triple("Evaluasi Estetika:", "Karya sastra bertema $topic.", "Evaluasilah gaya bahasa dan pesan moral yang terkandung di dalamnya!"),
-                        Triple("Kreasi Teks:", "Topik $topic.", "Buatlah sebuah esai kritis yang mengulas fenomena $topic!")
+                        Triple("Analisis Wacana Kritis:", "Editorial berita mengangkat isu krusial mengenai dampak sosial dari $topic di era digital.", "Identifikasi asumsi terselubung dan bias argumentasi penulis dalam artikel tersebut!"),
+                        Triple("Evaluasi Struktur Teks:", "Sebuah karya sastra/naskah argumentatif membahas polemik seputar $topic.", "Evaluasilah kohesi, koherensi, serta kekuatan diksi yang digunakan!"),
+                        Triple("Produksi Teks Kreatif:", "Diperlukan kampanye literasi publik bertema $topic untuk meningkatkan kesadaran masyarakat.", "Susunlah draf teks persuasi atau resensi kritis yang memuat argumen kuat!")
                     )
                 )
                 else -> Pair(
-                    listOf("C2 (Memahami)", "C3 (Menerapkan)"),
+                    listOf("C2 (Memahami)", "C3 (Menerapkan)", "C4 (Menganalisis)"),
                     listOf(
-                        Triple("Pemahaman:", "Teks tentang $topic.", "Apa gagasan utama dari teks tersebut?"),
-                        Triple("Penerapan:", "$topic dalam percakapan.", "Bagaimana cara menggunakan ungkapan $topic dalam konteks yang tepat?")
-                    )
-                )
-            }
-            "IPAS", "IPA", "IPS", "Sejarah", "Geografi", "Ekonomi", "Sosiologi", "Pendidikan Pancasila" -> when (fase) {
-                "Fase F", "Fase E" -> Pair(
-                    listOf("C4 (Menganalisis)", "C5 (Mengevaluasi)"),
-                    listOf(
-                        Triple("Analisis Fenomena:", "Data perubahan $topic dalam masyarakat/alam.", "Mengapa $topic tersebut berpengaruh signifikan?"),
-                        Triple("Evaluasi Sosial/Sains:", "Penerapan kebijakan/metode $topic.", "Apakah hasil $topic sudah tepat guna? Analisis faktor-faktor penyebabnya!")
-                    )
-                )
-                else -> Pair(
-                    listOf("C2 (Memahami)", "C3 (Menerapkan)"),
-                    listOf(
-                        Triple("Pengenalan:", "Pengamatan $topic di lingkungan.", "Apa peran $topic dalam kehidupan?"),
-                        Triple("Aplikasi:", "Percobaan/Studi kasus $topic sederhana.", "Bagaimana cara kerja $topic tersebut?")
+                        Triple("Pemahaman Pesan Teks:", "Sebuah cerita naratif pendek menceritakan petualangan tokoh yang mempelajari nilai dari $topic.", "Apa pesan moral utama yang ingin disampaikan pengarang kepada pembaca?"),
+                        Triple("Penggunaan Kosakata:", "Dalam percakapan sehari-hari mengenai $topic, ditemukan beberapa istilah khusus.", "Bagaimana makna istilah tersebut dalam konteks kalimat yang disediakan?"),
+                        Triple("Penyusunan Kalimat Efektif:", "Terdapat beberapa kalimat acak mengenai topik $topic yang belum tersusun padu.", "Susunlah kalimat-kalimat tersebut menjadi paragraf deskripsi yang runtut!")
                     )
                 )
             }
             else -> Pair(
-                listOf("C1 (Mengingat)", "C2 (Memahami)", "C3 (Menerapkan)"),
+                listOf("C3 (Menerapkan)", "C4 (Menganalisis)", "C5 (Mengevaluasi)"),
                 listOf(
-                    Triple("Pengenalan:", "Sebuah pengenalan dasar mengenai '$topic'.", "Apa pengertian dasar dari '$topic'?"),
-                    Triple("Eksplorasi:", "Eksplorasi sederhana tentang '$topic'.", "Sebutkan contoh penerapan '$topic' di sekitar kita!"),
-                    Triple("Aplikasi Dasar:", "Menerapkan '$topic' dalam kegiatan sederhana.", "Bagaimana cara melakukan '$topic' dengan benar?")
+                    Triple("Fenomena Sosial/Alam:", "Perubahan dinamika lingkungan dan masyarakat terkait isu $topic memicu berbagai perdebatan.", "Analisis faktor utama yang menjadi pemicu utama fenomena tersebut!"),
+                    Triple("Evaluasi Kebijakan/Praktik:", "Penerapan suatu metode atau aturan baru dalam ruang lingkup $topic diuji coba di beberapa daerah.", "Bagaimana efektivitas kebijakan tersebut berdasarkan indikator keberhasilan?"),
+                    Triple("Studi Kasus Komunitas:", "Sebuah komunitas lokal melakukan inovasi berbasis kearifan lokal dalam mengelola $topic.", "Apa pelajaran bermakna yang dapat diadopsi untuk skala yang lebih luas?")
                 )
             )
         }
 
         val adjustedLevels = if (jenisAsesmen.contains("Formatif")) {
-            baseLevels.filter { it.contains("C1") || it.contains("C2") || it.contains("C3") }
-                .ifEmpty { listOf("C1 (Mengingat)", "C2 (Memahami)", "C3 (Menerapkan)") }
+            baseLevels.filter { !it.contains("C6") }
         } else {
             baseLevels
         }
@@ -187,4 +193,3 @@ object OfflineAssessmentEngine {
         return Pair(adjustedLevels, scenarios)
     }
 }
-

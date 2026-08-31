@@ -25,8 +25,10 @@ class BackupManager(private val context: Context, private val database: AppDatab
             val protaList = database.protaDao().getAllProtaDirect()
             val promesList = database.promesDao().getAllPromesDirect()
             val atpList = database.atpDao().getAllAtpDirect()
+            val assessmentList = database.assessmentDao().getAllAssessmentsDirect()
+            val p5AssessmentList = database.p5AssessmentDao().getAllP5AssessmentsDirect()
 
-            val backup = DatabaseBackup(modulList, protaList, promesList, atpList)
+            val backup = DatabaseBackup(modulList, protaList, promesList, atpList, assessmentList, p5AssessmentList)
             moshi.adapter(DatabaseBackup::class.java).toJson(backup)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -43,6 +45,8 @@ class BackupManager(private val context: Context, private val database: AppDatab
                     backup.protaList.forEach { database.protaDao().insertProta(it) }
                     backup.promesList.forEach { database.promesDao().insertPromes(it) }
                     backup.atpList.forEach { database.atpDao().insertAtp(it) }
+                    backup.assessmentList.forEach { database.assessmentDao().insertAssessment(it) }
+                    backup.p5AssessmentList.forEach { database.p5AssessmentDao().insertP5Assessment(it) }
                 }
                 true
             } else {

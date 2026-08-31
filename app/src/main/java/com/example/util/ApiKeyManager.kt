@@ -64,6 +64,22 @@ object ApiKeyManager {
         } catch (_: Exception) {}
     }
 
+    fun hasUserApiKey(context: Context): Boolean {
+        val userKey = try {
+            val primary = getSharedPreferences(context).getString(KEY_API_KEY, null)
+            if (!primary.isNullOrBlank()) primary else {
+                getFallbackPreferences(context).getString(KEY_API_KEY, null)
+            }
+        } catch (e: Exception) {
+            try {
+                getFallbackPreferences(context).getString(KEY_API_KEY, null)
+            } catch (_: Exception) {
+                null
+            }
+        }
+        return !sanitizeKey(userKey).isNullOrBlank()
+    }
+
     fun getApiKey(context: Context): String? {
         val userKey = try {
             val primary = getSharedPreferences(context).getString(KEY_API_KEY, null)
