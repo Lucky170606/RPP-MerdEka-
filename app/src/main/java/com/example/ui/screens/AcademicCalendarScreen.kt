@@ -4,9 +4,11 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -178,8 +180,19 @@ fun AcademicCalendarScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text("Tahun Ajaran", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    listOf("2024/2025", "2025/2026").forEach { yr ->
+                                Row(
+                                    modifier = Modifier
+                                        .horizontalScroll(rememberScrollState())
+                                        .fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    // Use the academic year from the profile as the default
+                                    val currentAcademicYear = profile.defaultAcademicYear.ifBlank { "2024/2025" }
+                                    val yearsToShow = remember(currentAcademicYear) {
+                                        // Include the current year from profile, and maybe +/- 1 year
+                                        listOf(currentAcademicYear)
+                                    }
+                                    yearsToShow.forEach { yr ->
                                         FilterChip(
                                             selected = selectedYear == yr,
                                             onClick = { selectedYear = yr },
