@@ -239,6 +239,28 @@ fun TeacherProfileScreen(
                                             modifier = Modifier.fillMaxWidth(),
                                             singleLine = true
                                         )
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            OutlinedTextField(
+                                                value = defaultAcademicYear,
+                                                onValueChange = { defaultAcademicYear = it },
+                                                label = { Text("Tahun Ajaran") },
+                                                placeholder = { Text("Contoh: 2026/2027") },
+                                                modifier = Modifier.weight(1f),
+                                                singleLine = true
+                                            )
+                                            OutlinedTextField(
+                                                value = defaultSemester,
+                                                onValueChange = { defaultSemester = it },
+                                                label = { Text("Semester") },
+                                                placeholder = { Text("Contoh: Ganjil") },
+                                                modifier = Modifier.weight(1f),
+                                                singleLine = true
+                                            )
+                                        }
                                     }
                                 }
                             }
