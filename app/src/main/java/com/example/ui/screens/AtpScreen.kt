@@ -493,6 +493,29 @@ fun AtpScreen(
                                 )
                             }
                         }
+
+                        Spacer(Modifier.height(10.dp))
+                        Button(
+                            onClick = {
+                                viewModel.prepareWizardForTopic(
+                                    subject = selectedSubject,
+                                    fase = selectedFase,
+                                    grade = selectedGrade,
+                                    topic = step.materiPokok.ifBlank { step.tujuanPembelajaran }
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(vertical = 8.dp)
+                        ) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Buat Modul Ajar / RPP dari Materi Ini", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }

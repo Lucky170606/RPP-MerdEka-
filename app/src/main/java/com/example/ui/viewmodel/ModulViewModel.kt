@@ -284,6 +284,15 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun prepareWizardForTopic(subject: String, fase: Fase, grade: String, topic: String) {
+        wizardSubject.value = subject
+        wizardFase.value = fase
+        wizardGrade.value = grade
+        wizardTopic.value = topic
+        syncTeacherProfile(forceOverwrite = false)
+        navigateTo(Screen.Wizard)
+    }
+
     fun navigateTo(screen: Screen) {
         if (_currentScreen.value == screen) return
         if (screen is Screen.Wizard) {

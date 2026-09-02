@@ -432,7 +432,12 @@ fun PedagogicalConsultantScreen(
                             },
                             onRetryGemini = if (msg.isFallback && !msg.originalQuery.isNullOrBlank()) {
                                 { handleSend(msg.originalQuery, msgIndex) }
-                            } else null
+                            } else null,
+                            onApplyToWizard = {
+                                viewModel.wizardAdditionalNotes.value = msg.content
+                                viewModel.navigateTo(Screen.Wizard)
+                                Toast.makeText(context, "Saran AI dimuat ke Catatan Tambahan Modul Ajar!", Toast.LENGTH_SHORT).show()
+                            }
                         )
                     }
                 }
@@ -896,7 +901,8 @@ fun ModernUserBubble(content: String) {
 fun ModernAiBubble(
     message: ChatMessage,
     onCopy: () -> Unit,
-    onRetryGemini: (() -> Unit)? = null
+    onRetryGemini: (() -> Unit)? = null,
+    onApplyToWizard: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val soundManager = remember { SoundManager.getInstance(context) }
@@ -1096,6 +1102,33 @@ fun ModernAiBubble(
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Medium),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                }
+
+                if (onApplyToWizard != null) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+                        modifier = Modifier.clickable(onClick = onApplyToWizard)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(11.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Gunakan ke Modul",
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
 
