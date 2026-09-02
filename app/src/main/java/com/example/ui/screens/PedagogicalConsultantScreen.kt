@@ -916,80 +916,50 @@ fun ModernAiBubble(
     val isGemini = message.source?.contains("Gemini", ignoreCase = true) == true
     val isFallback = message.isFallback
 
-    Row(
+    Surface(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Start,
-        verticalAlignment = Alignment.Top
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        shadowElevation = 0.dp
     ) {
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(Brush.linearGradient(listOf(EduIndigo600, EduPurple500))),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.AutoAwesome,
-                contentDescription = "AI",
-                tint = Color.White,
-                modifier = Modifier.size(16.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.width(10.dp))
-
         Column(
-            modifier = Modifier.weight(1f),
-            horizontalAlignment = Alignment.Start
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            if (isFallback) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFFFEF3C7),
-                    border = BorderStroke(1.dp, Color(0xFFFDE68A)),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 6.dp)
+            // Header: AI Avatar & Name / Badge
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(Brush.linearGradient(listOf(EduIndigo600, EduPurple500))),
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = Color(0xFFB45309),
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = "AI",
+                            tint = Color.White,
                             modifier = Modifier.size(14.dp)
                         )
-                        Text(
-                            text = "Koneksi Gemini bermasalah (${message.errorReason ?: "terkendala"}). Menampilkan modul dari Bank Kurikulum Merdeka Offline.",
-                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 15.sp),
-                            color = Color(0xFF92400E)
-                        )
                     }
+                    Text(
+                        text = "Konsultan Pedagogis AI",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
-            }
 
-            Surface(
-                shape = RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 18.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-            ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
-                ) {
-                    RenderMarkdownBlocks(text = message.content)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // Action Row with Source Badge, Read Aloud, Copy Button, and Retry Button
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
                 val badgeColor = when {
                     isGemini -> Color(0xFFDCFCE7)
                     isFallback -> Color(0xFFFEF3C7)
@@ -1003,7 +973,7 @@ fun ModernAiBubble(
                 val badgeText = when {
                     isGemini -> "Gemini AI"
                     isFallback -> "Offline (Fallback)"
-                    else -> "Kurikulum Merdeka Offline"
+                    else -> "Offline"
                 }
                 val badgeIconTint = when {
                     isGemini -> Color(0xFF15803D)
@@ -1017,7 +987,7 @@ fun ModernAiBubble(
                     border = BorderStroke(1.dp, badgeBorder)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
@@ -1025,17 +995,56 @@ fun ModernAiBubble(
                             imageVector = if (isGemini) Icons.Default.AutoAwesome else Icons.Default.MenuBook,
                             contentDescription = null,
                             tint = badgeIconTint,
-                            modifier = Modifier.size(11.dp)
+                            modifier = Modifier.size(10.dp)
                         )
                         Text(
                             text = badgeText,
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.SemiBold),
                             color = badgeIconTint
                         )
                     }
                 }
+            }
 
-                // Read Aloud / Voice Button (Online Human Voice & Offline TTS)
+            if (isFallback) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFFFEF3C7),
+                    border = BorderStroke(1.dp, Color(0xFFFDE68A)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = Color(0xFFB45309),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = "Koneksi Gemini bermasalah. Menampilkan modul dari Bank Kurikulum Merdeka Offline.",
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 15.sp),
+                            color = Color(0xFF92400E)
+                        )
+                    }
+                }
+            }
+
+            // Message Body Content
+            RenderMarkdownBlocks(text = message.content)
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+            // Action Row: Read Aloud, Copy, Use to Wizard, Retry
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Read Aloud Button
                 Surface(
                     shape = RoundedCornerShape(6.dp),
                     color = if (isThisMessagePlaying || isThisMessageLoading) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
@@ -1051,7 +1060,7 @@ fun ModernAiBubble(
                     }
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (isThisMessageLoading) {
@@ -1063,7 +1072,7 @@ fun ModernAiBubble(
                         } else {
                             Icon(
                                 imageVector = if (isThisMessagePlaying) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
-                                contentDescription = "Bacakan Jawaban",
+                                contentDescription = "Bacakan",
                                 tint = if (isThisMessagePlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(11.dp)
                             )
@@ -1075,31 +1084,32 @@ fun ModernAiBubble(
                                 isThisMessagePlaying -> "Berhenti"
                                 else -> "Bacakan"
                             },
-                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = if (isThisMessagePlaying || isThisMessageLoading) FontWeight.Bold else FontWeight.Medium),
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                             color = if (isThisMessagePlaying || isThisMessageLoading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
+                // Copy Button
                 Surface(
                     shape = RoundedCornerShape(6.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier.clickable(onClick = onCopy)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = Icons.Default.ContentCopy,
-                            contentDescription = "Salin Jawaban",
+                            contentDescription = "Salin",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(11.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "Salin",
-                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Medium),
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -1113,7 +1123,7 @@ fun ModernAiBubble(
                         modifier = Modifier.clickable(onClick = onApplyToWizard)
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
@@ -1140,12 +1150,12 @@ fun ModernAiBubble(
                         modifier = Modifier.clickable(onClick = onRetryGemini)
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Refresh,
-                                contentDescription = "Coba Lagi Gemini",
+                                contentDescription = "Coba Lagi",
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(11.dp)
                             )
