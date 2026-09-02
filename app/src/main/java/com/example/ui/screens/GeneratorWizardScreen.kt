@@ -66,6 +66,10 @@ fun GeneratorWizardScreen(
         KurikulumMerdekaReferenceData.findMatchingCP(selectedSubject, selectedFase.code, topic)
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.syncTeacherProfile(forceOverwrite = false)
+    }
+
     BackHandler {
         if (currentStep > 1) {
             currentStep--
@@ -293,24 +297,52 @@ fun GeneratorWizardScreen(
 
                 // Guru & Sekolah
                 item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = teacherName,
-                            onValueChange = { viewModel.wizardTeacherName.value = it },
-                            label = { Text("Nama Guru") },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp)
-                        )
-                        OutlinedTextField(
-                            value = schoolName,
-                            onValueChange = { viewModel.wizardSchoolName.value = it },
-                            label = { Text("Satuan Pendidikan") },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp)
-                        )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Identitas Guru & Satuan Pendidikan:",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            TextButton(
+                                onClick = { viewModel.syncTeacherProfile(forceOverwrite = true) },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Muat dari Profil", fontSize = 11.sp)
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = teacherName,
+                                onValueChange = { viewModel.wizardTeacherName.value = it },
+                                label = { Text("Nama Guru") },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("input_wizard_teacher_name"),
+                                shape = RoundedCornerShape(10.dp),
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = schoolName,
+                                onValueChange = { viewModel.wizardSchoolName.value = it },
+                                label = { Text("Satuan Pendidikan") },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("input_wizard_school_name"),
+                                shape = RoundedCornerShape(10.dp),
+                                singleLine = true
+                            )
+                        }
                     }
                 }
 
@@ -325,14 +357,16 @@ fun GeneratorWizardScreen(
                             onValueChange = { viewModel.wizardSemester.value = it },
                             label = { Text("Semester") },
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp)
+                            shape = RoundedCornerShape(10.dp),
+                            singleLine = true
                         )
                         OutlinedTextField(
                             value = academicYear,
                             onValueChange = { viewModel.wizardAcademicYear.value = it },
                             label = { Text("Tahun Ajaran") },
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp)
+                            shape = RoundedCornerShape(10.dp),
+                            singleLine = true
                         )
                     }
                 }

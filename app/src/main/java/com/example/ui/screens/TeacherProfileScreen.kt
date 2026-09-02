@@ -39,6 +39,9 @@ import com.example.ui.viewmodel.ModulViewModel
 import com.example.ui.viewmodel.Screen
 import com.example.util.ApiKeyManager
 import com.example.util.AppThemeStyle
+import com.example.util.SoundManager
+import com.example.util.VoicePersona
+import com.example.util.AiSfxType
 import com.example.util.ThemeManager
 import com.example.util.ThemeMode
 import kotlinx.coroutines.launch
@@ -140,7 +143,8 @@ fun TeacherProfileScreen(
             printLayoutMode = selectedLayoutMode
         )
         TeacherProfile.saveToPreferences(context, newProfile)
-        Toast.makeText(context, "Pengaturan berhasil disimpan!", Toast.LENGTH_SHORT).show()
+        viewModel.syncTeacherProfile(forceOverwrite = true)
+        Toast.makeText(context, "Pengaturan & Profil berhasil disimpan!", Toast.LENGTH_SHORT).show()
         viewModel.navigateTo(Screen.Home)
     }
 
@@ -560,12 +564,191 @@ fun TeacherProfileScreen(
                     }
 
                     2 -> {
-                        // TAB 2: Pengaturan AI & Gemini API Key
+                        // TAB 2: Pengaturan AI, Suara & Gemini API Key
+                        val soundManager = remember { SoundManager.getInstance(context) }
+                        val isSfxOn by soundManager.isSoundEnabled.collectAsStateWithLifecycle()
+                        val isVoiceOn by soundManager.isVoiceEnabled.collectAsStateWithLifecycle()
+                        val currentPersona by soundManager.currentPersona.collectAsStateWithLifecycle()
+                        val isSpeaking by soundManager.isSpeaking.collectAsStateWithLifecycle()
+
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 80.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
+                            // Audio & Voice Persona Card
+                            item {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        SectionHeader(title = "Suara & Efek Asisten AI (100% Offline)", icon = Icons.Default.VolumeUp)
+
+                                        Text(
+                                            text = "Mesin suara asisten AI sepenuhnya offline, cepat, hemat kuota internet, dan aman privasi saat berkonsultasi pedagogik.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+
+                                        // Toggle SFX
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                                Icon(Icons.Default.GraphicEq, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                                Column {
+                                                    Text("Efek Audio Interaktif (SFX)", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                                    Text("Bunyi sintesis saat klik, proses AI, & selesai", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                }
+                                            }
+                                            Switch(
+                                                checked = isSfxOn,
+                                                onCheckedChange = {
+                                                    soundManager.setSoundEnabled(it)
+                                                    if (it) soundManager.playSfx(AiSfxType.AI_SUCCESS)
+                                                }
+                                            )
+                                        }
+
+                                        // Toggle Voice AI
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                                Icon(Icons.Default.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                                Column {
+                                                    Text("Suara Asisten AI (Read Aloud)", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                                    Text("Membacakan konsultasi pedagogik & modul offline", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                }
+                                            }
+                                            Switch(
+                                                checked = isVoiceOn,
+                                                onCheckedChange = {
+                                                    soundManager.setVoiceEnabled(it)
+                                                    if (it) {
+                                                        soundManager.speak("Halo Bapak Ibu Guru! Suara asisten AI offline telah aktif dan siap mendampingi Anda.")
+                                                    }
+                                                }
+                                            )
+                                        }
+
+                                        if (isVoiceOn) {
+                                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                                            Text("Pilih Persona Suara Offline:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+
+                                            VoicePersona.values().forEach { persona ->
+                                                val isSelected = currentPersona == persona
+                                                Surface(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clip(RoundedCornerShape(10.dp))
+                                                        .clickable {
+                                                            soundManager.setPersona(persona)
+                                                            soundManager.playSfx(AiSfxType.BUTTON_TAP)
+                                                            soundManager.speak("Halo! Saya siap membantu bapak dan ibu guru merancang modul ajar Kurikulum Merdeka.")
+                                                        },
+                                                    color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f) else Color.Transparent,
+                                                    border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                                                ) {
+                                                    Row(
+                                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.SpaceBetween
+                                                    ) {
+                                                        Row(
+                                                            modifier = Modifier.weight(1f),
+                                                            verticalAlignment = Alignment.Top,
+                                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                        ) {
+                                                            RadioButton(
+                                                                selected = isSelected,
+                                                                onClick = {
+                                                                    soundManager.setPersona(persona)
+                                                                    soundManager.speak("Halo! Saya siap membantu bapak dan ibu guru merancang modul ajar Kurikulum Merdeka.")
+                                                                },
+                                                                modifier = Modifier.size(24.dp)
+                                                            )
+                                                            Column {
+                                                                Text(
+                                                                    text = persona.displayName,
+                                                                    fontSize = 12.sp,
+                                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                                                )
+                                                                Text(
+                                                                    text = persona.description,
+                                                                    fontSize = 10.5.sp,
+                                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                    lineHeight = 14.sp
+                                                                )
+                                                            }
+                                                        }
+
+                                                        IconButton(
+                                                            onClick = {
+                                                                soundManager.setPersona(persona)
+                                                                soundManager.speak("Salam hangat Bapak Ibu guru! Ini contoh suara saya.")
+                                                            },
+                                                            modifier = Modifier.size(32.dp)
+                                                        ) {
+                                                            Icon(
+                                                                if (isSpeaking && isSelected) Icons.Default.VolumeUp else Icons.Default.PlayArrow,
+                                                                contentDescription = "Coba Suara",
+                                                                tint = MaterialTheme.colorScheme.primary,
+                                                                modifier = Modifier.size(18.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            Surface(
+                                                shape = RoundedCornerShape(8.dp),
+                                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.padding(10.dp),
+                                                    verticalAlignment = Alignment.Top,
+                                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Info,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                    Text(
+                                                        text = "Tips Suara Alami: Kualitas vokal offline otomatis mengikuti mesin suara perangkat (Google Speech Engine). Anda dapat mengunduh paket Bahasa Indonesia kualitas tinggi melalui Pengaturan HP > Aksesibilitas > Output Text-to-Speech.",
+                                                        fontSize = 11.sp,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        lineHeight = 15.sp
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
                             item {
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),

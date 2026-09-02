@@ -73,6 +73,61 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
         .add(KotlinJsonAdapterFactory())
         .build()
 
+    // Robust Backstack Navigation
+    private val prefs = application.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE)
+    private val isOnboardingDone = prefs.getBoolean("onboarding_completed", false)
+    private val backStack = java.util.ArrayDeque<Screen>().apply {
+        add(if (isOnboardingDone) Screen.Home else Screen.Onboarding)
+    }
+    private val _currentScreen = MutableStateFlow<Screen>(if (isOnboardingDone) Screen.Home else Screen.Onboarding)
+    val currentScreen: StateFlow<Screen> = _currentScreen.asStateFlow()
+
+    // Search & Filter
+    val searchQuery = MutableStateFlow("")
+    val selectedSubjectFilter = MutableStateFlow("Semua")
+    val selectedSemesterFilter = MutableStateFlow("Semua")
+    val selectedAcademicYearFilter = MutableStateFlow("Semua")
+    val selectedFaseFilter = MutableStateFlow("Semua")
+    val showOnlyFavorites = MutableStateFlow(false)
+    val isFolderGroupingMode = MutableStateFlow(false)
+
+    fun resetFilters() {
+        searchQuery.value = ""
+        selectedSubjectFilter.value = "Semua"
+        selectedSemesterFilter.value = "Semua"
+        selectedAcademicYearFilter.value = "Semua"
+        selectedFaseFilter.value = "Semua"
+        showOnlyFavorites.value = false
+    }
+
+    // Active Modul for Editor
+    private val _activeModul = MutableStateFlow<ModulAjarEntity?>(null)
+    val activeModul: StateFlow<ModulAjarEntity?> = _activeModul.asStateFlow()
+
+    // Wizard Form State
+    val wizardTeacherName = MutableStateFlow(com.example.data.model.TeacherProfile.loadFromPreferences(application).teacherName)
+    val wizardSchoolName = MutableStateFlow(com.example.data.model.TeacherProfile.loadFromPreferences(application).schoolName)
+    val wizardFase = MutableStateFlow(Fase.FASE_B)
+    val wizardGrade = MutableStateFlow("Kelas 4")
+    val wizardSubject = MutableStateFlow("Matematika")
+    val wizardTopic = MutableStateFlow("")
+    val wizardTimeAllocation = MutableStateFlow("2 JP (2 x 35 Menit)")
+    val wizardSemester = MutableStateFlow(com.example.data.model.TeacherProfile.loadFromPreferences(application).defaultSemester)
+    val wizardAcademicYear = MutableStateFlow(com.example.data.model.TeacherProfile.loadFromPreferences(application).defaultAcademicYear)
+    val wizardModel = MutableStateFlow("Problem-Based Learning (PBL)")
+    val wizardSelectedDimensi = MutableStateFlow<List<String>>(listOf("Bernalar Kritis", "Bergotong Royong", "Mandiri"))
+    val wizardGayaBelajar = MutableStateFlow<List<String>>(listOf("Visual", "Auditori", "Kinestetik"))
+    val wizardKesiapan = MutableStateFlow<List<String>>(listOf("Perlu Bimbingan", "Berkembang", "Mahir"))
+    val wizardAdditionalNotes = MutableStateFlow("")
+
+    val generationState = MutableStateFlow<GenerationState>(GenerationState.Idle)
+    val isEnhancingSection = MutableStateFlow(false)
+    val isGeneratingAssessment = MutableStateFlow(false)
+    val isGeneratingP5 = MutableStateFlow(false)
+
+    // Data from Room
+    val allModul: StateFlow<List<ModulAjarEntity>>
+
     init {
         val db = AppDatabase.getDatabase(application)
         repository = ModulRepository(db.modulAjarDao())
@@ -89,6 +144,14 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
         allSavedAssessments = assessmentDao.getAllAssessments()
         allSavedP5Assessments = p5AssessmentDao.getAllP5Assessments()
 
+        allModul = searchQuery
+            .debounce(200)
+            .flatMapLatest { query ->
+                if (query.isBlank()) repository.allModul else repository.searchModul(query)
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+        syncTeacherProfile()
         seedInitialSampleDataIfEmpty()
     }
 
@@ -205,68 +268,27 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Robust Backstack Navigation
-    private val prefs = application.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE)
-    private val isOnboardingDone = prefs.getBoolean("onboarding_completed", false)
-    private val backStack = java.util.ArrayDeque<Screen>().apply {
-        add(if (isOnboardingDone) Screen.Home else Screen.Onboarding)
-    }
-    private val _currentScreen = MutableStateFlow<Screen>(if (isOnboardingDone) Screen.Home else Screen.Onboarding)
-    val currentScreen: StateFlow<Screen> = _currentScreen.asStateFlow()
-
-    // Search & Filter
-    val searchQuery = MutableStateFlow("")
-    val selectedSubjectFilter = MutableStateFlow("Semua")
-    val selectedSemesterFilter = MutableStateFlow("Semua")
-    val selectedAcademicYearFilter = MutableStateFlow("Semua")
-    val selectedFaseFilter = MutableStateFlow("Semua")
-    val showOnlyFavorites = MutableStateFlow(false)
-    val isFolderGroupingMode = MutableStateFlow(false)
-
-    fun resetFilters() {
-        searchQuery.value = ""
-        selectedSubjectFilter.value = "Semua"
-        selectedSemesterFilter.value = "Semua"
-        selectedAcademicYearFilter.value = "Semua"
-        selectedFaseFilter.value = "Semua"
-        showOnlyFavorites.value = false
-    }
-
-    // Data from Room
-    val allModul: StateFlow<List<ModulAjarEntity>> = searchQuery
-        .debounce(200)
-        .flatMapLatest { query ->
-            if (query.isBlank()) repository.allModul else repository.searchModul(query)
+    fun syncTeacherProfile(forceOverwrite: Boolean = false) {
+        val profile = com.example.data.model.TeacherProfile.loadFromPreferences(getApplication())
+        if (forceOverwrite || wizardTeacherName.value.isBlank() || wizardTeacherName.value == "Budi Santoso, S.Pd.") {
+            wizardTeacherName.value = profile.teacherName
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // Active Modul for Editor
-    private val _activeModul = MutableStateFlow<ModulAjarEntity?>(null)
-    val activeModul: StateFlow<ModulAjarEntity?> = _activeModul.asStateFlow()
-
-    // Wizard Form State
-    val wizardTeacherName = MutableStateFlow("Budi Santoso, S.Pd.")
-    val wizardSchoolName = MutableStateFlow("SDN Merdeka Belajar 01")
-    val wizardFase = MutableStateFlow(Fase.FASE_B)
-    val wizardGrade = MutableStateFlow("Kelas 4")
-    val wizardSubject = MutableStateFlow("Matematika")
-    val wizardTopic = MutableStateFlow("")
-    val wizardTimeAllocation = MutableStateFlow("2 JP (2 x 35 Menit)")
-    val wizardSemester = MutableStateFlow("Semester 1 (Ganjil)")
-    val wizardAcademicYear = MutableStateFlow("2024/2025")
-    val wizardModel = MutableStateFlow("Problem-Based Learning (PBL)")
-    val wizardSelectedDimensi = MutableStateFlow<List<String>>(listOf("Bernalar Kritis", "Bergotong Royong", "Mandiri"))
-    val wizardGayaBelajar = MutableStateFlow<List<String>>(listOf("Visual", "Auditori", "Kinestetik"))
-    val wizardKesiapan = MutableStateFlow<List<String>>(listOf("Perlu Bimbingan", "Berkembang", "Mahir"))
-    val wizardAdditionalNotes = MutableStateFlow("")
-
-    val generationState = MutableStateFlow<GenerationState>(GenerationState.Idle)
-    val isEnhancingSection = MutableStateFlow(false)
-    val isGeneratingAssessment = MutableStateFlow(false)
-    val isGeneratingP5 = MutableStateFlow(false)
+        if (forceOverwrite || wizardSchoolName.value.isBlank() || wizardSchoolName.value == "SDN Merdeka Belajar 01" || wizardSchoolName.value == "SD Negeri Merdeka Belajar 01") {
+            wizardSchoolName.value = profile.schoolName
+        }
+        if (forceOverwrite || wizardSemester.value.isBlank()) {
+            wizardSemester.value = profile.defaultSemester
+        }
+        if (forceOverwrite || wizardAcademicYear.value.isBlank()) {
+            wizardAcademicYear.value = profile.defaultAcademicYear
+        }
+    }
 
     fun navigateTo(screen: Screen) {
         if (_currentScreen.value == screen) return
+        if (screen is Screen.Wizard) {
+            syncTeacherProfile(forceOverwrite = false)
+        }
         if (screen is Screen.Home) {
             backStack.clear()
             backStack.add(Screen.Home)
@@ -333,6 +355,9 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun startAIGeneration() {
+        val soundManager = com.example.util.SoundManager.getInstance(getApplication())
+        soundManager.playSfx(com.example.util.AiSfxType.AI_START_GENERATING)
+
         viewModelScope.launch {
             generationState.value = GenerationState.Generating("Menganalisis Capaian Pembelajaran & Dimensi P3...")
 
@@ -397,9 +422,11 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
                 )
 
                 val newId = repository.insertModul(entity)
+                soundManager.playSfx(com.example.util.AiSfxType.AI_SUCCESS)
                 generationState.value = GenerationState.Success(newId)
                 navigateTo(Screen.Editor(newId))
             }.onFailure { error ->
+                soundManager.playSfx(com.example.util.AiSfxType.AI_ERROR)
                 generationState.value = GenerationState.Error("Gagal menyusun modul: ${error.localizedMessage}")
             }
         }

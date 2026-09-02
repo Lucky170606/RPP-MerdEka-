@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.ai.ChatMessage
 import com.example.data.ai.ConnectionTestResult
 import com.example.data.ai.GeminiService
@@ -54,7 +55,9 @@ import com.example.data.ai.PedagogicalConsultantEngine
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.ModulViewModel
 import com.example.ui.viewmodel.Screen
+import com.example.util.AiSfxType
 import com.example.util.ApiKeyManager
+import com.example.util.SoundManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -178,6 +181,8 @@ fun PedagogicalConsultantScreen(
             messages.add(ChatMessage(sender = "USER", content = trimmed))
         }
         isProcessing = true
+        val soundManager = SoundManager.getInstance(context)
+        soundManager.playSfx(AiSfxType.AI_START_GENERATING)
 
         activeConsultationJob = coroutineScope.launch {
             try {
@@ -242,6 +247,8 @@ fun PedagogicalConsultantScreen(
                     originalQuery = trimmed,
                     errorReason = errorReason
                 )
+
+                soundManager.playSfx(AiSfxType.AI_SUCCESS)
 
                 if (retryIndex != null && retryIndex in messages.indices) {
                     messages[retryIndex] = responseMsg
@@ -891,6 +898,15 @@ fun ModernAiBubble(
     onCopy: () -> Unit,
     onRetryGemini: (() -> Unit)? = null
 ) {
+    val context = LocalContext.current
+    val soundManager = remember { SoundManager.getInstance(context) }
+    val isSpeaking by soundManager.isSpeaking.collectAsStateWithLifecycle()
+    val isLoadingVoice by soundManager.isLoadingVoice.collectAsStateWithLifecycle()
+    val currentUtteranceId by soundManager.currentUtteranceId.collectAsStateWithLifecycle()
+    val messageUtteranceId = remember(message.content) { "msg_${message.content.hashCode()}" }
+    val isThisMessageTarget = currentUtteranceId == messageUtteranceId || currentUtteranceId?.startsWith(messageUtteranceId) == true
+    val isThisMessagePlaying = isSpeaking && isThisMessageTarget
+    val isThisMessageLoading = isLoadingVoice && isThisMessageTarget
     val isGemini = message.source?.contains("Gemini", ignoreCase = true) == true
     val isFallback = message.isFallback
 
@@ -963,7 +979,7 @@ fun ModernAiBubble(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Action Row with Source Badge, Copy Button, and Retry Button
+            // Action Row with Source Badge, Read Aloud, Copy Button, and Retry Button
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1009,6 +1025,52 @@ fun ModernAiBubble(
                             text = badgeText,
                             style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.SemiBold),
                             color = badgeIconTint
+                        )
+                    }
+                }
+
+                // Read Aloud / Voice Button (Online Human Voice & Offline TTS)
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = if (isThisMessagePlaying || isThisMessageLoading) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    border = if (isThisMessagePlaying || isThisMessageLoading) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
+                    modifier = Modifier.clickable {
+                        if (isThisMessagePlaying || isThisMessageLoading) {
+                            soundManager.stopSpeaking()
+                        } else {
+                            soundManager.setVoiceEnabled(true)
+                            soundManager.playSfx(AiSfxType.BUTTON_TAP)
+                            soundManager.speak(message.content, messageUtteranceId)
+                        }
+                    }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (isThisMessageLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(11.dp),
+                                strokeWidth = 1.5.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            Icon(
+                                imageVector = if (isThisMessagePlaying) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                                contentDescription = "Bacakan Jawaban",
+                                tint = if (isThisMessagePlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(11.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = when {
+                                isThisMessageLoading -> "Memuat..."
+                                isThisMessagePlaying -> "Berhenti"
+                                else -> "Bacakan"
+                            },
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = if (isThisMessagePlaying || isThisMessageLoading) FontWeight.Bold else FontWeight.Medium),
+                            color = if (isThisMessagePlaying || isThisMessageLoading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
