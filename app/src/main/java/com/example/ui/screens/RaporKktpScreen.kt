@@ -175,7 +175,9 @@ fun RaporKktpScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .imePadding()
                 .padding(16.dp),
+            contentPadding = PaddingValues(bottom = 72.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Header Settings Card

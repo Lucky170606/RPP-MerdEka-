@@ -50,8 +50,9 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
         LazyColumn(
             modifier = Modifier
                 .padding(padding)
+                .imePadding()
                 .fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 80.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {

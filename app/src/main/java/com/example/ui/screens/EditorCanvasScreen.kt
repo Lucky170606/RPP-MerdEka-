@@ -200,6 +200,7 @@ fun EditorCanvasScreen(
             modifier = modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .imePadding()
         ) {
             when (selectedTab) {
                 0 -> PreviewPrintCanvasTab(

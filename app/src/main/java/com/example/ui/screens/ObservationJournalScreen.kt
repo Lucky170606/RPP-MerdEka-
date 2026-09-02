@@ -149,6 +149,7 @@ fun ObservationJournalScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .imePadding()
         ) {
             TabRow(
                 selectedTabIndex = selectedTab,

@@ -196,6 +196,7 @@ fun TeacherProfileScreen(
             modifier = modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .imePadding()
         ) {
             HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
                 when (page) {
@@ -203,7 +204,7 @@ fun TeacherProfileScreen(
                         // TAB 0: Profil & Sekolah
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(12.dp),
+                            contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 80.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             item {
@@ -321,7 +322,7 @@ fun TeacherProfileScreen(
                         // TAB 1: Tema Tampilan
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(12.dp),
+                            contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 80.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             item {
@@ -562,7 +563,7 @@ fun TeacherProfileScreen(
                         // TAB 2: Pengaturan AI & Gemini API Key
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(12.dp),
+                            contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 80.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             item {
@@ -803,7 +804,7 @@ fun TeacherProfileScreen(
                         // TAB 3: Format Cetak
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(12.dp),
+                            contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 80.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             item {
@@ -877,7 +878,7 @@ fun TeacherProfileScreen(
                         // TAB 4: Cadangan & Pemulihan (Backup & Restore)
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(12.dp),
+                            contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 80.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             item {
@@ -948,7 +949,7 @@ fun TeacherProfileScreen(
                         // TAB 5: Panduan & Info
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(12.dp),
+                            contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 80.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             item {

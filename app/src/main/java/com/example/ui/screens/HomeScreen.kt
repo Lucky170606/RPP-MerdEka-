@@ -65,16 +65,64 @@ fun HomeScreen(
     val modulList by viewModel.allModul.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedSubject by viewModel.selectedSubjectFilter.collectAsStateWithLifecycle()
+    val selectedSemester by viewModel.selectedSemesterFilter.collectAsStateWithLifecycle()
+    val selectedAcademicYear by viewModel.selectedAcademicYearFilter.collectAsStateWithLifecycle()
+    val selectedFase by viewModel.selectedFaseFilter.collectAsStateWithLifecycle()
     val showOnlyFavorites by viewModel.showOnlyFavorites.collectAsStateWithLifecycle()
+    val isFolderMode by viewModel.isFolderGroupingMode.collectAsStateWithLifecycle()
 
     var modulToDelete by remember { mutableStateOf<ModulAjarEntity?>(null) }
+    var expandedFolders by remember { mutableStateOf<Set<String>>(emptySet()) }
 
-    val filteredModul by remember(modulList, selectedSubject, showOnlyFavorites) {
+    // Dynamic Lists from Database + Standard
+    val availableYears by remember(modulList) {
+        derivedStateOf {
+            val baseYears = listOf("2024/2025", "2025/2026", "2023/2024")
+            val dbYears = modulList.map { it.academicYear }.filter { it.isNotBlank() }
+            listOf("Semua") + (baseYears + dbYears).distinct()
+        }
+    }
+
+    val availableSubjects by remember(modulList) {
+        derivedStateOf {
+            val baseSubjects = listOf("Matematika", "IPAS", "Bahasa Indonesia", "Bahasa Inggris", "Pendidikan Pancasila", "Informatika", "PJOK", "Seni Rupa", "PAI")
+            val dbSubjects = modulList.map { it.subject }.filter { it.isNotBlank() }
+            listOf("Semua") + (baseSubjects + dbSubjects).distinct()
+        }
+    }
+
+    val availableSemesters = listOf("Semua", "Semester 1 (Ganjil)", "Semester 2 (Genap)")
+    val availableFases = listOf("Semua", "Fase A", "Fase B", "Fase C", "Fase D", "Fase E", "Fase F")
+
+    val isAnyFilterActive = selectedSubject != "Semua" || selectedSemester != "Semua" || selectedAcademicYear != "Semua" || selectedFase != "Semua" || showOnlyFavorites || searchQuery.isNotBlank()
+
+    val filteredModul by remember(modulList, selectedSubject, selectedSemester, selectedAcademicYear, selectedFase, showOnlyFavorites, searchQuery) {
         derivedStateOf {
             modulList.filter { modul ->
                 val matchSubject = selectedSubject == "Semua" || modul.subject.equals(selectedSubject, ignoreCase = true)
+                val matchSemester = when (selectedSemester) {
+                    "Semua" -> true
+                    "Semester 1 (Ganjil)" -> modul.semester.contains("1", ignoreCase = true) || modul.semester.contains("Ganjil", ignoreCase = true)
+                    "Semester 2 (Genap)" -> modul.semester.contains("2", ignoreCase = true) || modul.semester.contains("Genap", ignoreCase = true)
+                    else -> modul.semester.contains(selectedSemester, ignoreCase = true)
+                }
+                val matchYear = selectedAcademicYear == "Semua" || modul.academicYear.equals(selectedAcademicYear, ignoreCase = true)
+                val matchFase = selectedFase == "Semua" || modul.fase.equals(selectedFase, ignoreCase = true)
                 val matchFav = !showOnlyFavorites || modul.isFavorite
-                matchSubject && matchFav
+                matchSubject && matchSemester && matchYear && matchFase && matchFav
+            }
+        }
+    }
+
+    // Grouping by Folder: Academic Year & Semester
+    val groupedByFolder by remember(filteredModul) {
+        derivedStateOf {
+            filteredModul.groupBy { modul ->
+                val year = modul.academicYear.ifBlank { "2024/2025" }
+                val sem = if (modul.semester.contains("1") || modul.semester.contains("Ganjil", ignoreCase = true)) "Semester 1 (Ganjil)"
+                          else if (modul.semester.contains("2") || modul.semester.contains("Genap", ignoreCase = true)) "Semester 2 (Genap)"
+                          else modul.semester.ifBlank { "Semester 1 (Ganjil)" }
+                "Tahun Ajaran $year • $sem"
             }
         }
     }
@@ -458,7 +506,7 @@ fun HomeScreen(
                 }
             }
 
-            // Search Bar & Filter Row
+            // Search Bar & Multi-Dimensional Filter Section
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
@@ -486,56 +534,256 @@ fun HomeScreen(
                         )
                     )
 
-                    // Subject Filter Chips
-                    val subjectFilterList = listOf("Semua", "Matematika", "IPAS", "Bahasa Indonesia", "Informatika", "Pendidikan Pancasila")
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        item {
-                            FilterChip(
-                                selected = showOnlyFavorites,
-                                onClick = { viewModel.showOnlyFavorites.value = !showOnlyFavorites },
-                                label = { Text("Favorit") },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = if (showOnlyFavorites) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp),
-                                        tint = if (showOnlyFavorites) EduAmber600 else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                },
-                                shape = RoundedCornerShape(8.dp)
-                            )
+                    // Filter Category 1: Tahun Ajaran Filter
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                            Text("Tahun Ajaran:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                         }
-                        items(subjectFilterList) { sub ->
-                            FilterChip(
-                                selected = selectedSubject == sub,
-                                onClick = { viewModel.selectedSubjectFilter.value = sub },
-                                label = { Text(sub) },
-                                shape = RoundedCornerShape(8.dp)
-                            )
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            items(availableYears) { yr ->
+                                FilterChip(
+                                    selected = selectedAcademicYear == yr,
+                                    onClick = { viewModel.selectedAcademicYearFilter.value = yr },
+                                    label = { Text(if (yr == "Semua") "Semua Tahun" else yr, fontSize = 12.sp) },
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Filter Category 2: Tag Semester Filter
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(Icons.Default.Bookmark, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.secondary)
+                            Text("Tag Semester:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        }
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            items(availableSemesters) { sem ->
+                                FilterChip(
+                                    selected = selectedSemester == sem,
+                                    onClick = { viewModel.selectedSemesterFilter.value = sem },
+                                    label = { Text(sem, fontSize = 12.sp) },
+                                    leadingIcon = if (selectedSemester == sem) {
+                                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                                    } else null,
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Filter Category 3: Mata Pelajaran & Favorit Chips
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(Icons.Default.MenuBook, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.tertiary)
+                                Text("Mata Pelajaran & Kategori:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                            }
+                            if (isAnyFilterActive) {
+                                TextButton(
+                                    onClick = { viewModel.resetFilters() },
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(12.dp))
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Text("Reset Filter", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        }
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            item {
+                                FilterChip(
+                                    selected = showOnlyFavorites,
+                                    onClick = { viewModel.showOnlyFavorites.value = !showOnlyFavorites },
+                                    label = { Text("Favorit", fontSize = 12.sp) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = if (showOnlyFavorites) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = if (showOnlyFavorites) EduAmber600 else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    },
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                            }
+                            items(availableSubjects) { sub ->
+                                FilterChip(
+                                    selected = selectedSubject == sub,
+                                    onClick = { viewModel.selectedSubjectFilter.value = sub },
+                                    label = { Text(if (sub == "Semua") "Semua Mapel" else sub, fontSize = 12.sp) },
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Filter Category 4: Fase (Jenjang)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(Icons.Default.School, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                            Text("Jenjang / Fase:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        }
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            items(availableFases) { fase ->
+                                FilterChip(
+                                    selected = selectedFase == fase,
+                                    onClick = { viewModel.selectedFaseFilter.value = fase },
+                                    label = { Text(if (fase == "Semua") "Semua Fase" else fase, fontSize = 12.sp) },
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            // Modul List Header
+            // Modul List Header with View Toggle
             item {
-                SectionHeader(
-                    title = "Koleksi Modul Ajar (${filteredModul.size})",
-                    icon = Icons.Default.FolderSpecial
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        SectionHeader(
+                            title = if (isFolderMode) "Arsip Folder (${groupedByFolder.size})" else "Koleksi Modul (${filteredModul.size})",
+                            icon = if (isFolderMode) Icons.Default.FolderSpecial else Icons.Default.LibraryBooks
+                        )
+                    }
+
+                    // Compact View Mode Toggle (Daftar / Folder)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                            border = androidx.compose.foundation.BorderStroke(0.8.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(2.dp),
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = if (!isFolderMode) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                    modifier = Modifier.clickable { viewModel.isFolderGroupingMode.value = false }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.ViewList,
+                                            contentDescription = "Daftar",
+                                            modifier = Modifier.size(13.dp),
+                                            tint = if (!isFolderMode) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            "Daftar",
+                                            fontSize = 11.sp,
+                                            fontWeight = if (!isFolderMode) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (!isFolderMode) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = if (isFolderMode) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                    modifier = Modifier.clickable { viewModel.isFolderGroupingMode.value = true }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Folder,
+                                            contentDescription = "Folder",
+                                            modifier = Modifier.size(13.dp),
+                                            tint = if (isFolderMode) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            "Folder",
+                                            fontSize = 11.sp,
+                                            fontWeight = if (isFolderMode) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (isFolderMode) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             if (filteredModul.isEmpty()) {
                 item {
                     EmptyModulCard(
-                        isSearching = searchQuery.isNotEmpty(),
+                        isSearching = searchQuery.isNotEmpty() || isAnyFilterActive,
                         onCreateClick = { viewModel.navigateTo(Screen.Wizard) }
                     )
                 }
+            } else if (isFolderMode) {
+                // FOLDER GROUPING MODE
+                items(groupedByFolder.keys.toList(), key = { it }) { folderName ->
+                    val modulsInFolder = groupedByFolder[folderName] ?: emptyList()
+                    val isExpanded = expandedFolders.contains(folderName) || expandedFolders.isEmpty()
+
+                    FolderArchiveCard(
+                        folderName = folderName,
+                        modulCount = modulsInFolder.size,
+                        isExpanded = isExpanded,
+                        onToggleExpand = {
+                            expandedFolders = if (isExpanded) {
+                                expandedFolders - folderName
+                            } else {
+                                expandedFolders + folderName
+                            }
+                        },
+                        moduls = modulsInFolder,
+                        onOpenModul = { viewModel.navigateTo(Screen.Editor(it.id)) },
+                        onPrintModul = { DocumentExporter.printOrSavePdf(context, it) },
+                        onShareModul = { DocumentExporter.shareModulText(context, it) },
+                        onToggleFavorite = { viewModel.toggleFavorite(it.id, it.isFavorite) },
+                        onDeleteModul = { modulToDelete = it }
+                    )
+                }
             } else {
+                // FLAT LIST VIEW
                 items(filteredModul, key = { it.id }) { modul ->
                     ModulItemCard(
                         modul = modul,
@@ -748,6 +996,117 @@ fun QuickPresetCard(
 }
 
 @Composable
+fun FolderArchiveCard(
+    folderName: String,
+    modulCount: Int,
+    isExpanded: Boolean,
+    onToggleExpand: () -> Unit,
+    moduls: List<ModulAjarEntity>,
+    onOpenModul: (ModulAjarEntity) -> Unit,
+    onPrintModul: (ModulAjarEntity) -> Unit,
+    onShareModul: (ModulAjarEntity) -> Unit,
+    onToggleFavorite: (ModulAjarEntity) -> Unit,
+    onDeleteModul: (ModulAjarEntity) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Folder Header Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onToggleExpand)
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isExpanded) Icons.Default.FolderOpen else Icons.Default.Folder,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = folderName,
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "$modulCount Modul Tersimpan",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    BadgeChip(
+                        text = "$modulCount Modul",
+                        backgroundColor = MaterialTheme.colorScheme.secondaryContainer,
+                        textColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    IconButton(
+                        onClick = onToggleExpand,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = if (isExpanded) "Tutup Folder" else "Buka Folder",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            // Expanded Folder Content
+            if (isExpanded) {
+                Divider(
+                    modifier = Modifier.padding(vertical = 10.dp),
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    moduls.forEach { modul ->
+                        ModulItemCard(
+                            modul = modul,
+                            onOpenClick = { onOpenModul(modul) },
+                            onPrintClick = { onPrintModul(modul) },
+                            onShareClick = { onShareModul(modul) },
+                            onToggleFavorite = { onToggleFavorite(modul) },
+                            onDeleteClick = { onDeleteModul(modul) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun ModulItemCard(
     modul: ModulAjarEntity,
     onOpenClick: () -> Unit,
@@ -756,6 +1115,11 @@ fun ModulItemCard(
     onToggleFavorite: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
+    val semesterLabel = if (modul.semester.contains("1") || modul.semester.contains("Ganjil", ignoreCase = true)) "Sem. Ganjil"
+                        else if (modul.semester.contains("2") || modul.semester.contains("Genap", ignoreCase = true)) "Sem. Genap"
+                        else modul.semester.ifBlank { "Sem. Ganjil" }
+    val yearLabel = modul.academicYear.ifBlank { "2024/2025" }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -778,22 +1142,24 @@ fun ModulItemCard(
             ) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
                 ) {
                     BadgeChip(
-                        text = modul.fase,
+                        text = "$semesterLabel • $yearLabel",
                         backgroundColor = MaterialTheme.colorScheme.primaryContainer,
-                        textColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    BadgeChip(
-                        text = modul.grade,
-                        backgroundColor = MaterialTheme.colorScheme.secondaryContainer,
-                        textColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        textColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        icon = Icons.Default.CalendarToday
                     )
                     BadgeChip(
                         text = modul.subject,
                         backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
                         textColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    BadgeChip(
+                        text = modul.grade,
+                        backgroundColor = MaterialTheme.colorScheme.secondaryContainer,
+                        textColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
 

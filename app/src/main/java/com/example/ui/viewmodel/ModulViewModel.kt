@@ -217,7 +217,20 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
     // Search & Filter
     val searchQuery = MutableStateFlow("")
     val selectedSubjectFilter = MutableStateFlow("Semua")
+    val selectedSemesterFilter = MutableStateFlow("Semua")
+    val selectedAcademicYearFilter = MutableStateFlow("Semua")
+    val selectedFaseFilter = MutableStateFlow("Semua")
     val showOnlyFavorites = MutableStateFlow(false)
+    val isFolderGroupingMode = MutableStateFlow(false)
+
+    fun resetFilters() {
+        searchQuery.value = ""
+        selectedSubjectFilter.value = "Semua"
+        selectedSemesterFilter.value = "Semua"
+        selectedAcademicYearFilter.value = "Semua"
+        selectedFaseFilter.value = "Semua"
+        showOnlyFavorites.value = false
+    }
 
     // Data from Room
     val allModul: StateFlow<List<ModulAjarEntity>> = searchQuery

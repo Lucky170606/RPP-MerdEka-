@@ -57,18 +57,23 @@ object KurikulumMerdekaReferenceData {
     fun getSuggestedTopics(fase: String, subject: String): List<String> {
         android.util.Log.d("WizardDebug", "getSuggestedTopics called: fase='$fase', subject='$subject'")
         
-        // Debug: Log some database entries
-        android.util.Log.d("WizardDebug", "Database size: ${CP_DATABASE.size}")
-        CP_DATABASE.take(5).forEach { 
-            android.util.Log.d("WizardDebug", "DB Entry: ${it.fase} - ${it.subject}")
-        }
-        
         val results = CP_DATABASE
             .filter { it.subject.equals(subject, ignoreCase = true) && it.fase.equals(fase, ignoreCase = true) }
         android.util.Log.d("WizardDebug", "Found ${results.size} matches in CP_DATABASE")
-        return results
-            .flatMap { it.suggestedTujuan }
-            .distinct()
+        
+        val topics = results.flatMap { it.suggestedTujuan }.distinct()
+        if (topics.isNotEmpty()) {
+            return topics
+        }
+        
+        // Fallback suggestions for any subject/fase combination to ensure suggestions are never empty
+        return listOf(
+            "Pengantar dan Pemahaman Konsep Dasar $subject",
+            "Eksplorasi Materi Esensial $subject ($fase)",
+            "Aktivitas Praktikum dan Diskusi Kontekstual",
+            "Penerapan Konsep dalam Kehidupan Sehari-hari",
+            "Refleksi dan Evaluasi Pemahaman Peserta Didik"
+        )
     }
 
     val PROFIL_PELAJAR_PANCASILA = listOf(

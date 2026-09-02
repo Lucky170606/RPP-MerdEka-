@@ -369,6 +369,7 @@ fun ProtaPromesScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .imePadding()
         ) {
             // Tab Selector
             TabRow(

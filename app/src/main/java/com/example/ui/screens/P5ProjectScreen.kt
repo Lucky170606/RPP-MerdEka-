@@ -71,8 +71,9 @@ fun P5ProjectScreen(
         LazyColumn(
             modifier = modifier
                 .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(16.dp),
+                .padding(innerPadding)
+                .imePadding(),
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 64.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             // AI Status Banner
