@@ -6,8 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [ModulAjarEntity::class, ProtaEntity::class, PromesEntity::class, AtpEntity::class, AssessmentEntity::class, P5AssessmentEntity::class],
-    version = 4,
+    entities = [ModulAjarEntity::class, ProtaEntity::class, PromesEntity::class, AtpEntity::class, AssessmentEntity::class, P5AssessmentEntity::class, AcademicCalendarEntity::class],
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -17,6 +17,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun atpDao(): AtpDao
     abstract fun assessmentDao(): AssessmentDao
     abstract fun p5AssessmentDao(): P5AssessmentDao
+    abstract fun academicCalendarDao(): AcademicCalendarDao
 
     companion object {
         @Volatile

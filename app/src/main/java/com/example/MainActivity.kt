@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.ui.screens.AcademicCalendarScreen
 import com.example.ui.screens.AssessmentHotsScreen
 import com.example.ui.screens.AtpScreen
 import com.example.ui.screens.EditorCanvasScreen
@@ -75,6 +76,7 @@ class MainActivity : ComponentActivity() {
                         is Screen.Consultant -> PedagogicalConsultantScreen(viewModel = viewModel)
                         is Screen.ProfileSettings -> TeacherProfileScreen(viewModel = viewModel)
                         is Screen.ProtaPromes -> ProtaPromesScreen(viewModel = viewModel, onNavigateBack = { viewModel.navigateTo(Screen.Home) })
+                        is Screen.AcademicCalendar -> AcademicCalendarScreen(viewModel = viewModel, onNavigateBack = { viewModel.navigateTo(Screen.Home) })
                         is Screen.Atp -> AtpScreen(viewModel = viewModel, onNavigateBack = { viewModel.navigateTo(Screen.Home) })
                         is Screen.RaporKktp -> RaporKktpScreen(onNavigateBack = { viewModel.navigateTo(Screen.Home) })
                         is Screen.ObservationJournal -> ObservationJournalScreen(onNavigateBack = { viewModel.navigateTo(Screen.Home) })

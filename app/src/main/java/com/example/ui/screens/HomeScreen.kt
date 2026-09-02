@@ -39,6 +39,7 @@ import com.example.ui.theme.*
 import com.example.ui.viewmodel.ModulViewModel
 import com.example.ui.viewmodel.Screen
 import com.example.util.DocumentExporter
+import com.example.data.model.TeacherProfile
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -70,6 +71,10 @@ fun HomeScreen(
     val selectedFase by viewModel.selectedFaseFilter.collectAsStateWithLifecycle()
     val showOnlyFavorites by viewModel.showOnlyFavorites.collectAsStateWithLifecycle()
     val isFolderMode by viewModel.isFolderGroupingMode.collectAsStateWithLifecycle()
+
+    var profile by remember { mutableStateOf(TeacherProfile.loadFromPreferences(context)) }
+    val isProfileDefault = profile.teacherName.contains("Budi Santoso", ignoreCase = true) || profile.schoolName.contains("Merdeka Belajar 01", ignoreCase = true)
+    var showProfileBanner by remember { mutableStateOf(isProfileDefault) }
 
     var modulToDelete by remember { mutableStateOf<ModulAjarEntity?>(null) }
     var expandedFolders by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -224,6 +229,64 @@ fun HomeScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            if (showProfileBanner) {
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.navigateTo(Screen.ProfileSettings) }
+                            .testTag("card_profile_warning"),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PersonPin,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Lengkapi Profil & Sekolah Anda",
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                                Text(
+                                    text = "Atur nama guru, NIP, dan nama sekolah agar otomatis tercetak di Modul Ajar & Rapor.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
+                                )
+                            }
+                            IconButton(
+                                onClick = { showProfileBanner = false },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Tutup",
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             // Hero Banner
             item {
                 HeroBannerCard(
@@ -232,18 +295,19 @@ fun HomeScreen(
                 )
             }
 
-            // Quick Feature Tools Grid / Row
+             // Quick Feature Tools Grid / Row
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     SectionHeader(
                         title = "Ekosistem Perangkat Ajar Lengkap",
                         icon = Icons.Default.Apps
                     )
+
+                    // Row 1: P5 & HOTS Assessment
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // Card P5
                         Card(
                             modifier = Modifier
                                 .weight(1f)
@@ -271,7 +335,6 @@ fun HomeScreen(
                             }
                         }
 
-                        // Card Bank Soal HOTS
                         Card(
                             modifier = Modifier
                                 .weight(1f)
@@ -300,11 +363,11 @@ fun HomeScreen(
                         }
                     }
 
+                    // Row 2: Consultant & Prota Promes
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // Card Konsultasi Guru
                         Card(
                             modifier = Modifier
                                 .weight(1f)
@@ -332,7 +395,6 @@ fun HomeScreen(
                             }
                         }
 
-                        // Card PROTA & PROMES
                         Card(
                             modifier = Modifier
                                 .weight(1f)
@@ -361,11 +423,38 @@ fun HomeScreen(
                         }
                     }
 
+                    // Row 3: Academic Calendar & ATP
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // Card Alur Tujuan Pembelajaran (ATP)
+                        Card(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { viewModel.navigateTo(Screen.AcademicCalendar) }
+                                .testTag("card_shortcut_calendar"),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.secondaryContainer),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.EventAvailable, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
+                                }
+                                Text("Kalender Akademik", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Text("Hitung Minggu & Jam Efektif KBM", style = MaterialTheme.typography.bodySmall, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                            }
+                        }
+
                         Card(
                             modifier = Modifier
                                 .weight(1f)
@@ -392,8 +481,13 @@ fun HomeScreen(
                                 Text("Alur Tujuan Pembelajaran & Alokasi JP", style = MaterialTheme.typography.bodySmall, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                             }
                         }
+                    }
 
-                        // Card KKTP & Deskripsi e-Rapor
+                    // Row 4: KKTP e-Rapor & Observation Journal
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
                         Card(
                             modifier = Modifier
                                 .weight(1f)
@@ -420,13 +514,7 @@ fun HomeScreen(
                                 Text("Generator Kalimat Capaian e-Rapor", style = MaterialTheme.typography.bodySmall, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                             }
                         }
-                    }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        // Card Jurnal Observasi & Antarteman
                         Card(
                             modifier = Modifier
                                 .weight(1f)
@@ -451,34 +539,6 @@ fun HomeScreen(
                                 }
                                 Text("Observasi & Sikap P3", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
                                 Text("Jurnal Anekdot & Penilaian Antarteman", style = MaterialTheme.typography.bodySmall, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
-                            }
-                        }
-
-                        // Card Profil & Pengaturan
-                        Card(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clickable { viewModel.navigateTo(Screen.ProfileSettings) }
-                                .testTag("card_shortcut_profile"),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
-                                }
-                                Text("Profil & Kop Surat", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
-                                Text("Data Sekolah, NIP & Pengesahan", style = MaterialTheme.typography.bodySmall, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                             }
                         }
                     }

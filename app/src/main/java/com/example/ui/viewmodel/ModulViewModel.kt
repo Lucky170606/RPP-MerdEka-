@@ -14,6 +14,8 @@ import com.example.data.local.AtpEntity
 import com.example.data.local.ProtaDao
 import com.example.data.local.PromesDao
 import com.example.data.local.AtpDao
+import com.example.data.local.AcademicCalendarDao
+import com.example.data.local.AcademicCalendarEntity
 import com.example.data.model.Fase
 import com.example.data.model.GeneratedModulContent
 import com.example.data.model.KurikulumMerdekaReferenceData
@@ -44,6 +46,7 @@ sealed class Screen {
     object Atp : Screen()
     object RaporKktp : Screen()
     object ObservationJournal : Screen()
+    object AcademicCalendar : Screen()
 }
 
 sealed class GenerationState {
@@ -61,6 +64,7 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
     private val atpDao: AtpDao
     private val assessmentDao: com.example.data.local.AssessmentDao
     private val p5AssessmentDao: com.example.data.local.P5AssessmentDao
+    private val calendarDao: AcademicCalendarDao
     private val backupManager: com.example.data.backup.BackupManager
 
     val allProta: Flow<List<ProtaEntity>>
@@ -136,6 +140,7 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
         atpDao = db.atpDao()
         assessmentDao = db.assessmentDao()
         p5AssessmentDao = db.p5AssessmentDao()
+        calendarDao = db.academicCalendarDao()
         backupManager = com.example.data.backup.BackupManager(application, db)
 
         allProta = protaDao.getAllProta()
@@ -786,5 +791,57 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
                 onResult(modul)
             }
         }
+    }
+
+    fun getCalendarWeeks(year: String, semester: String): Flow<List<AcademicCalendarEntity>> {
+        return calendarDao.getCalendarWeeks(year, semester)
+    }
+
+    suspend fun saveCalendarWeek(week: AcademicCalendarEntity) {
+        calendarDao.updateWeek(week)
+    }
+
+    suspend fun initDefaultCalendar(year: String, semester: String) {
+        val defaultWeeks = mutableListOf<AcademicCalendarEntity>()
+        val totalWeeks = 20
+        val monthNames = if (semester.contains("1") || semester.contains("Ganjil", ignoreCase = true)) {
+            listOf("Juli", "Agustus", "September", "Oktober", "November", "Desember")
+        } else {
+            listOf("Januari", "Februari", "Maret", "April", "Mei", "Juni")
+        }
+
+        for (i in 1..totalWeeks) {
+            val monthIndex = (i - 1) / 4
+            val mName = monthNames.getOrElse(monthIndex) { monthNames.last() }
+            val weekLbl = "Minggu ke-${((i - 1) % 4) + 1}"
+            val status = when {
+                i == 1 -> "ACTIVITY"
+                i == 9 || i == 18 -> "EXAM"
+                i == 19 || i == 20 -> "HOLIDAY"
+                else -> "EFFECTIVE"
+            }
+            val desc = when (status) {
+                "ACTIVITY" -> "Masa Pengenalan Lingkungan Sekolah (MPLS)"
+                "EXAM" -> "Penilaian / Asesmen Sumatif / Semester"
+                "HOLIDAY" -> "Libur Semester / Jeda Akademik"
+                else -> "Kegiatan Belajar Mengajar (KBM) Efektif"
+            }
+            val hours = if (status == "EFFECTIVE") 4 else 0
+
+            defaultWeeks.add(
+                AcademicCalendarEntity(
+                    academicYear = year,
+                    semester = semester,
+                    weekNumber = i,
+                    monthName = mName,
+                    weekLabel = weekLbl,
+                    status = status,
+                    hours = hours,
+                    description = desc
+                )
+            )
+        }
+        calendarDao.deleteForSemester(year, semester)
+        calendarDao.insertAll(defaultWeeks)
     }
 }
