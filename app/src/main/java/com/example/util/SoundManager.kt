@@ -257,7 +257,8 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
      * - Inserts natural pauses after list items for smooth breathing and cadence
      */
     private fun formatForIndonesianSpeech(text: String): String {
-        return text
+        val processedText = injectPausesOnRepeats(text)
+        return processedText
             // Markdown Headings and bold/italic markers
             .replace(Regex("^#+\\s*", RegexOption.MULTILINE), "")
             .replace(Regex("\\*"), "")
@@ -266,6 +267,17 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
             .replace(Regex("_(.*?)_"), "$1")
             .replace(Regex("`{1,3}.*?`{1,3}"), "")
             .replace(Regex("\\[([^\\]]+)\\]\\([^\\)]+\\)"), "$1")
+            // Automatic Phonetic Translation for English Terms
+            .replace(Regex("(?i)\\bassessment\\b"), "asesmen")
+            .replace(Regex("(?i)\\blearning\\b"), "lerning")
+            .replace(Regex("(?i)\\bproject\\b"), "proyek")
+            .replace(Regex("(?i)\\bdesign\\b"), "desain")
+            .replace(Regex("(?i)\\bdifferentiation\\b"), "diferensiasi")
+            .replace(Regex("(?i)\\badaptive\\b"), "adaptif")
+            .replace(Regex("(?i)\\bstudent\\b"), "studen")
+            .replace(Regex("(?i)\\bteacher\\b"), "ticher")
+            .replace(Regex("(?i)\\bonline\\b"), "onlain")
+            .replace(Regex("(?i)\\boffline\\b"), "oflain")
             // Educational Abbreviations Expansion
             .replace(Regex("\\bRPP\\b", RegexOption.IGNORE_CASE), "R P P")
             .replace(Regex("\\bModul Ajar\\b", RegexOption.IGNORE_CASE), "Modul Ajar")
@@ -528,6 +540,22 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
         stopSpeaking()
         tts?.shutdown()
         tts = null
+    }
+
+    private fun injectPausesOnRepeats(text: String): String {
+        val sentences = text.split(Regex("(?<=[.!?])"))
+        val processed = mutableListOf<String>()
+        val seen = mutableSetOf<String>()
+        for (sentence in sentences) {
+            val normalized = sentence.trim().lowercase()
+            if (normalized.length > 5 && seen.contains(normalized)) {
+                processed.add("... ,,, " + sentence)
+            } else {
+                processed.add(sentence)
+                if (normalized.length > 5) seen.add(normalized)
+            }
+        }
+        return processed.joinToString(" ")
     }
 
     companion object {
