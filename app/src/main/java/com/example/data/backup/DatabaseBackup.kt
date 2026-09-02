@@ -15,5 +15,6 @@ data class DatabaseBackup(
     val promesList: List<PromesEntity>,
     val atpList: List<AtpEntity>,
     val assessmentList: List<AssessmentEntity> = emptyList(),
-    val p5AssessmentList: List<P5AssessmentEntity> = emptyList()
+    val p5AssessmentList: List<P5AssessmentEntity> = emptyList(),
+    val teacherProfile: com.example.data.model.TeacherProfile? = null
 )

@@ -3,6 +3,7 @@ package com.example.data.backup
 import android.content.Context
 import androidx.room.withTransaction
 import com.example.data.local.AppDatabase
+import com.example.data.model.TeacherProfile
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.Dispatchers
@@ -27,8 +28,9 @@ class BackupManager(private val context: Context, private val database: AppDatab
             val atpList = database.atpDao().getAllAtpDirect()
             val assessmentList = database.assessmentDao().getAllAssessmentsDirect()
             val p5AssessmentList = database.p5AssessmentDao().getAllP5AssessmentsDirect()
+            val teacherProfile = TeacherProfile.loadFromPreferences(context)
 
-            val backup = DatabaseBackup(modulList, protaList, promesList, atpList, assessmentList, p5AssessmentList)
+            val backup = DatabaseBackup(modulList, protaList, promesList, atpList, assessmentList, p5AssessmentList, teacherProfile)
             moshi.adapter(DatabaseBackup::class.java).toJson(backup)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -47,6 +49,9 @@ class BackupManager(private val context: Context, private val database: AppDatab
                     backup.atpList.forEach { database.atpDao().insertAtp(it) }
                     backup.assessmentList.forEach { database.assessmentDao().insertAssessment(it) }
                     backup.p5AssessmentList.forEach { database.p5AssessmentDao().insertP5Assessment(it) }
+                }
+                backup.teacherProfile?.let {
+                    TeacherProfile.saveToPreferences(context, it)
                 }
                 true
             } else {
