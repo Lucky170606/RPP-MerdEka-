@@ -34,9 +34,9 @@ data class TeacherProfile(
             )
         }
 
-        fun saveToPreferences(context: Context, profile: TeacherProfile) {
+        fun saveToPreferences(context: Context, profile: TeacherProfile, sync: Boolean = false) {
             val pref = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-            pref.edit()
+            val editor = pref.edit()
                 .putString("teacherName", profile.teacherName)
                 .putString("teacherNip", profile.teacherNip)
                 .putString("schoolName", profile.schoolName)
@@ -47,7 +47,12 @@ data class TeacherProfile(
                 .putString("academicYear", profile.defaultAcademicYear)
                 .putString("semester", profile.defaultSemester)
                 .putString("printLayoutMode", profile.printLayoutMode)
-                .apply()
+            
+            if (sync) {
+                editor.commit()
+            } else {
+                editor.apply()
+            }
         }
     }
 }

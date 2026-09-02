@@ -51,7 +51,7 @@ class BackupManager(private val context: Context, private val database: AppDatab
                     backup.p5AssessmentList.forEach { database.p5AssessmentDao().insertP5Assessment(it) }
                 }
                 backup.teacherProfile?.let {
-                    TeacherProfile.saveToPreferences(context, it)
+                    TeacherProfile.saveToPreferences(context, it, sync = true)
                 }
                 true
             } else {
