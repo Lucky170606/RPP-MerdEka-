@@ -1,7 +1,9 @@
 package com.example.ui.screens
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -60,7 +62,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 ) {
                     Column(
                         modifier = Modifier.padding(18.dp),
@@ -271,7 +273,60 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                                 Text("2. Masuk dengan Akun Google Anda, lalu klik tombol 'Get API key'.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text("3. Buat kunci baru, salin teks kunci tersebut dan tempelkan pada kolom di atas.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text("4. Klik 'Simpan & Uji Koneksi AI' untuk memverifikasi kesiapan AI.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            }
+                        }
+
+                        // Voice Persona Settings
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(18.dp),
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                Text(
+                                    text = "Pengaturan Suara AI",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                                )
+                                val soundManager = com.example.util.SoundManager.getInstance(context)
+                                var currentPersona by remember { mutableStateOf(soundManager.currentPersona.value) }
+
+                                com.example.util.VoicePersona.values().forEach { persona ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                currentPersona = persona
+                                                soundManager.setPersona(persona)
+                                            }
+                                            .padding(vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        RadioButton(
+                                            selected = (currentPersona == persona),
+                                            onClick = {
+                                                currentPersona = persona
+                                                soundManager.setPersona(persona)
+                                            }
+                                        )
+                                        Column(modifier = Modifier.padding(start = 8.dp)) {
+                                            Text(text = persona.displayName, fontWeight = FontWeight.Bold)
+                                            Text(text = persona.description, style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text("🛡️ Mode Offline Kurikulum Merdeka:", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
                                 Text("Aplikasi ini dapat digunakan 100% tanpa internet dan tanpa API Key dengan memanfaatkan Bank Data Kurikulum Merdeka bawaan.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }

@@ -135,38 +135,31 @@ fun PedagogicalConsultantScreen(
     val starterCards = listOf(
         QuickPromptCategory(
             icon = Icons.Default.Lightbulb,
-            title = "Ice Breaking Seru",
-            prompt = "Berikan 3 ide ice breaking 5 menit yang seru dan relevan untuk membuka pelajaran dengan energi positif!",
+            title = "Proyek P5 2026",
+            prompt = "Berikan ide tema Proyek P5 yang relevan dengan isu lingkungan dan digitalisasi di tahun 2026!",
             iconTint = Color(0xFFD97706),
             iconBg = Color(0xFFFEF3C7)
         ),
         QuickPromptCategory(
             icon = Icons.Default.Psychology,
-            title = "Deep Learning",
-            prompt = "Bagaimana menerapkan metode Deep Learning (pembelajaran mendalam) dalam Kurikulum Merdeka agar siswa lebih kritis?",
+            title = "Pembelajaran AI",
+            prompt = "Bagaimana cara mengintegrasikan alat AI dalam pembelajaran Kurikulum Merdeka agar siswa tetap kritis dan kreatif?",
             iconTint = Color(0xFF4F46E5),
             iconBg = Color(0xFFE0E7FF)
         ),
         QuickPromptCategory(
             icon = Icons.Default.Quiz,
-            title = "Pertanyaan HOTS",
-            prompt = "Bagaimana teknik menyusun pertanyaan pemantik yang bisa memicu rasa ingin tahu (curiosity) siswa?",
+            title = "Asesmen Adaptif",
+            prompt = "Berikan strategi asesmen diagnostik kognitif yang cepat untuk memetakan kesiapan belajar siswa di awal tahun ajaran baru!",
             iconTint = Color(0xFF9333EA),
             iconBg = Color(0xFFF3E8FF)
         ),
         QuickPromptCategory(
             icon = Icons.Default.Groups,
-            title = "Diferensiasi Kelas",
-            prompt = "Bagaimana cara efektif mengajar di kelas yang kemampuan dasar siswanya sangat bervariasi?",
+            title = "Diferensiasi Konten",
+            prompt = "Buat rencana pembelajaran terdiferensiasi (konten, proses, produk) untuk satu materi di Kurikulum Merdeka!",
             iconTint = Color(0xFF16A34A),
             iconBg = Color(0xFFDCFCE7)
-        ),
-        QuickPromptCategory(
-            icon = Icons.Default.AssignmentTurnedIn,
-            title = "Asesmen Formatif",
-            prompt = "Berikan 4 metode asesmen formatif cepat dan menyenangkan tanpa membebani guru dengan koreksi kertas!",
-            iconTint = Color(0xFFEA580C),
-            iconBg = Color(0xFFFFEDD5)
         )
     )
 

@@ -229,15 +229,16 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
                         idVoices.firstOrNull { voice ->
                             val name = voice.name.lowercase()
                             name.contains("male") || name.contains("man") || name.contains("ardi") ||
-                                    name.contains("budi") || name.contains("m0") || name.contains("#male")
-                        } ?: idVoices.firstOrNull { !it.name.lowercase().contains("female") }
+                                    name.contains("budi") || name.contains("m0") || name.contains("m1") || name.contains("#male")
+                        } ?: idVoices.firstOrNull { !it.name.lowercase().contains("female") && !it.name.lowercase().contains("f0") }
                     } else {
                         // Prioritize Indonesian Female voice
                         idVoices.firstOrNull { voice ->
                             val name = voice.name.lowercase()
                             name.contains("female") || name.contains("woman") || name.contains("gadis") ||
-                                    name.contains("nur") || name.contains("pertiwi") || name.contains("f0") || name.contains("#female")
-                        } ?: idVoices.firstOrNull()
+                                    name.contains("nur") || name.contains("pertiwi") || name.contains("f0") || name.contains("f1") || name.contains("#female")
+                        } ?: idVoices.firstOrNull { !it.name.lowercase().contains("male") && !it.name.lowercase().contains("m0") }
+                            ?: idVoices.firstOrNull()
                     }
 
                     if (targetVoice != null) {
@@ -259,6 +260,7 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
         return text
             // Markdown Headings and bold/italic markers
             .replace(Regex("^#+\\s*", RegexOption.MULTILINE), "")
+            .replace(Regex("\\*"), "")
             .replace(Regex("\\*\\*(.*?)\\*\\*"), "$1")
             .replace(Regex("\\*(.*?)\\*"), "$1")
             .replace(Regex("_(.*?)_"), "$1")
@@ -305,6 +307,8 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
             .replace(Regex("^\\d+\\.\\s*", RegexOption.MULTILINE), ", ")
             .replace(Regex("[|~>_=]"), " ")
             // Punctuation and spacing cleanup
+            .replace(Regex("[.!?]"), "$0 ,,,,, ")
+            .replace(",", ", ,, ")
             .replace(Regex("[,]{2,}"), ",")
             .replace(Regex("\\s+"), " ")
             .trim()
