@@ -622,17 +622,36 @@ fun TeacherProfileScreen(
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .clip(RoundedCornerShape(8.dp))
-                                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                                                .padding(horizontal = 12.dp, vertical = 10.dp),
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.SpaceBetween
                                         ) {
-                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                                Icon(Icons.Default.GraphicEq, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                                Column {
-                                                    Text("Efek Audio Interaktif (SFX)", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                                                    Text("Bunyi sintesis saat klik, proses AI, & selesai", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Row(
+                                                modifier = Modifier.weight(1f).padding(end = 12.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.GraphicEq,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(22.dp)
+                                                )
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        "Efek Audio Interaktif (SFX)",
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        fontSize = 13.sp,
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                    Text(
+                                                        "Bunyi sintesis saat klik, proses AI, & selesai",
+                                                        fontSize = 11.sp,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        lineHeight = 14.sp
+                                                    )
                                                 }
                                             }
                                             Switch(
@@ -648,17 +667,36 @@ fun TeacherProfileScreen(
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .clip(RoundedCornerShape(8.dp))
-                                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                                                .padding(horizontal = 12.dp, vertical = 10.dp),
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.SpaceBetween
                                         ) {
-                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                                Icon(Icons.Default.RecordVoiceOver, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                                Column {
-                                                    Text("Suara Asisten AI (Read Aloud)", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                                                    Text("Membacakan konsultasi pedagogik & modul offline", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Row(
+                                                modifier = Modifier.weight(1f).padding(end = 12.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.RecordVoiceOver,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(22.dp)
+                                                )
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        "Suara Asisten AI (Read Aloud)",
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        fontSize = 13.sp,
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                    Text(
+                                                        "Membacakan konsultasi pedagogik & modul offline",
+                                                        fontSize = 11.sp,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        lineHeight = 14.sp
+                                                    )
                                                 }
                                             }
                                             Switch(
@@ -759,7 +797,7 @@ fun TeacherProfileScreen(
                                                         modifier = Modifier.size(16.dp)
                                                     )
                                                     Text(
-                                                        text = "Tips Suara Alami: Kualitas vokal offline otomatis mengikuti mesin suara perangkat (Google Speech Engine). Anda dapat mengunduh paket Bahasa Indonesia kualitas tinggi melalui Pengaturan HP > Aksesibilitas > Output Text-to-Speech.",
+                                                        text = "Tips Suara: Suara asisten offline mengikuti mesin Text-to-Speech di HP Anda. Untuk perangkat Samsung atau lainnya, pastikan paket suara Bahasa Indonesia sudah terpasang (Pengaturan HP > Manajemen Umum/Aksesibilitas > Text-to-Speech > Mesin Utama / Google Speech Services).",
                                                         fontSize = 11.sp,
                                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                         lineHeight = 15.sp

@@ -200,7 +200,7 @@ fun PedagogicalConsultantScreen(
                             - Gunakan format teks rapi dan hindari rumus LaTeX berlebih.
                         """.trimIndent()
 
-                        val result = withTimeoutOrNull(60000L) {
+                        val result = withTimeoutOrNull(360000L) {
                             GeminiService.generateText(context, aiPrompt)
                         }
 

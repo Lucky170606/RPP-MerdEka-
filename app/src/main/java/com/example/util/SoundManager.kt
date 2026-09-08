@@ -41,14 +41,14 @@ enum class VoicePersona(
     IBU_PERTIWI(
         displayName = "Ibu Guru Pertiwi (Wanita - Lembut & Ramah)",
         description = "Suara wanita Indonesia santun, artikulasi jelas, hangat, dan mengayomi.",
-        pitch = 1.05f,
+        pitch = 1.08f,
         speechRate = 0.95f,
         isMale = false
     ),
     PAK_ARIS(
         displayName = "Pak Guru Aris (Pria - Berwibawa & Tenang)",
         description = "Suara pria Indonesia berwibawa, intonasi tenang, tegas, dan membimbing.",
-        pitch = 0.85f,
+        pitch = 0.75f,
         speechRate = 0.92f,
         isMale = true
     ),
@@ -62,8 +62,8 @@ enum class VoicePersona(
     SAHABAT_CERIA(
         displayName = "Sahabat Belajar (Ceria & Enerjik)",
         description = "Nada dinamis, bersemangat, dan ramah untuk pembelajaran aktif peserta didik.",
-        pitch = 1.20f,
-        speechRate = 1.08f,
+        pitch = 1.22f,
+        speechRate = 1.05f,
         isMale = false
     )
 }
@@ -124,19 +124,33 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            val localeId = Locale("id", "ID")
-            var result = tts?.setLanguage(localeId)
-
-            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                result = tts?.setLanguage(Locale("in", "ID"))
+            val supportedLocales = listOf(
+                Locale("id", "ID"),
+                Locale("in", "ID"),
+                Locale("id"),
+                Locale("in")
+            )
+            var languageConfigured = false
+            for (loc in supportedLocales) {
+                try {
+                    val result = tts?.setLanguage(loc)
+                    if (result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED) {
+                        languageConfigured = true
+                        break
+                    }
+                } catch (_: Exception) {}
             }
-            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                tts?.setLanguage(Locale.getDefault())
+
+            if (!languageConfigured) {
+                try {
+                    tts?.language = Locale("id", "ID")
+                } catch (_: Exception) {}
             }
 
             try {
+                // Use USAGE_MEDIA so audio routes to standard media volume (works seamlessly on Samsung One UI, Xiaomi, Oppo, etc.)
                 val audioAttributes = AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build()
                 tts?.setAudioAttributes(audioAttributes)
@@ -212,40 +226,76 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
      * Finds and applies the best offline voice matching persona gender and acoustic qualities
      */
     private fun applyPersonaToOfflineTts(persona: VoicePersona) {
-        tts?.setPitch(persona.pitch)
-        tts?.setSpeechRate(persona.speechRate)
+        var appliedPitch = persona.pitch
+        var appliedRate = persona.speechRate
 
         try {
             val voices: Set<Voice>? = tts?.voices
             if (!voices.isNullOrEmpty()) {
                 val idVoices = voices.filter {
                     val lang = it.locale.language.lowercase()
-                    lang == "id" || lang == "in"
+                    val country = it.locale.country.lowercase()
+                    lang == "id" || lang == "in" || country == "id"
                 }
 
                 if (idVoices.isNotEmpty()) {
-                    val targetVoice = if (persona.isMale) {
-                        // Prioritize Indonesian Male voice
-                        idVoices.firstOrNull { voice ->
+                    var targetVoice: Voice? = null
+
+                    if (persona.isMale) {
+                        // Scan for male voice identifiers across Google TTS, Samsung TTS, and other engines:
+                        // Google TTS: x-idc, x-ide, x-idf, x-idb
+                        // General: male, man, pria, ardi, budi, m0, m1, #male
+                        targetVoice = idVoices.firstOrNull { voice ->
                             val name = voice.name.lowercase()
-                            name.contains("male") || name.contains("man") || name.contains("ardi") ||
-                                    name.contains("budi") || name.contains("m0") || name.contains("m1") || name.contains("#male")
-                        } ?: idVoices.firstOrNull { !it.name.lowercase().contains("female") && !it.name.lowercase().contains("f0") }
+                            name.contains("x-idc") || name.contains("x-ide") || name.contains("x-idf") ||
+                                name.contains("x-idb") || name.contains("male") || name.contains("man") ||
+                                name.contains("pria") || name.contains("ardi") || name.contains("budi") ||
+                                name.contains("m0") || name.contains("m1") || name.contains("#male") ||
+                                voice.features?.any { it.lowercase().contains("male") } == true
+                        }
+
+                        if (targetVoice != null) {
+                            appliedPitch = 0.88f
+                            appliedRate = 0.92f
+                        } else {
+                            // If device only has single default female voice pack: drop formant pitch to generate natural male baritone
+                            targetVoice = idVoices.firstOrNull()
+                            appliedPitch = 0.70f
+                            appliedRate = 0.90f
+                        }
                     } else {
-                        // Prioritize Indonesian Female voice
-                        idVoices.firstOrNull { voice ->
+                        // Female voice matching
+                        targetVoice = idVoices.firstOrNull { voice ->
                             val name = voice.name.lowercase()
-                            name.contains("female") || name.contains("woman") || name.contains("gadis") ||
-                                    name.contains("nur") || name.contains("pertiwi") || name.contains("f0") || name.contains("f1") || name.contains("#female")
-                        } ?: idVoices.firstOrNull { !it.name.lowercase().contains("male") && !it.name.lowercase().contains("m0") }
-                            ?: idVoices.firstOrNull()
+                            name.contains("x-dfz") || name.contains("x-ida") || name.contains("x-idd") ||
+                                name.contains("female") || name.contains("woman") || name.contains("wanita") ||
+                                name.contains("gadis") || name.contains("nur") || name.contains("pertiwi") ||
+                                name.contains("f0") || name.contains("f1") || name.contains("#female") ||
+                                voice.features?.any { it.lowercase().contains("female") } == true
+                        } ?: idVoices.firstOrNull { voice ->
+                            val name = voice.name.lowercase()
+                            !name.contains("x-idc") && !name.contains("x-ide") && !name.contains("x-idf") && !name.contains("male")
+                        } ?: idVoices.firstOrNull()
                     }
 
                     if (targetVoice != null) {
-                        tts?.voice = targetVoice
+                        try {
+                            tts?.voice = targetVoice
+                        } catch (_: Exception) {}
                     }
+                } else if (persona.isMale) {
+                    appliedPitch = 0.70f
                 }
+            } else if (persona.isMale) {
+                appliedPitch = 0.70f
             }
+        } catch (_: Exception) {
+            if (persona.isMale) appliedPitch = 0.70f
+        }
+
+        try {
+            tts?.setPitch(appliedPitch)
+            tts?.setSpeechRate(appliedRate)
         } catch (_: Exception) {}
     }
 
@@ -385,14 +435,19 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
         _isLoadingVoice.value = false
         _currentUtteranceId.value = utteranceId
 
+        val audioParams = android.os.Bundle().apply {
+            putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, android.media.AudioManager.STREAM_MUSIC)
+            putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f)
+        }
+
         val chunks = splitIntoSentenceChunks(cleanText, 350)
         if (chunks.isEmpty()) {
-            tts?.speak(cleanText, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
+            tts?.speak(cleanText, TextToSpeech.QUEUE_FLUSH, audioParams, utteranceId)
         } else {
             for (i in chunks.indices) {
                 val queueMode = if (i == 0) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
                 val chunkUtteranceId = if (i == chunks.lastIndex) utteranceId else "${utteranceId}_part_$i"
-                tts?.speak(chunks[i], queueMode, null, chunkUtteranceId)
+                tts?.speak(chunks[i], queueMode, audioParams, chunkUtteranceId)
             }
         }
     }
