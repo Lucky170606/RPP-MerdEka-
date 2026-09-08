@@ -56,6 +56,11 @@ sealed class GenerationState {
     data class Error(val message: String) : GenerationState()
 }
 
+enum class GenerationMode {
+    GEMINI_AI,
+    OFFLINE
+}
+
 @OptIn(kotlinx.coroutines.FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ModulViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: ModulRepository
@@ -120,9 +125,11 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
     val wizardAcademicYear = MutableStateFlow(com.example.data.model.TeacherProfile.loadFromPreferences(application).defaultAcademicYear)
     val wizardModel = MutableStateFlow("Problem-Based Learning (PBL)")
     val wizardSelectedDimensi = MutableStateFlow<List<String>>(listOf("Bernalar Kritis", "Bergotong Royong", "Mandiri"))
+    val wizardSelectedPpra = MutableStateFlow<List<String>>(listOf("Berkeadaban (Ta'addub)", "Keteladanan (Qudwah)", "Mengambil Jalan Tengah (Tawassuth)"))
     val wizardGayaBelajar = MutableStateFlow<List<String>>(listOf("Visual", "Auditori", "Kinestetik"))
     val wizardKesiapan = MutableStateFlow<List<String>>(listOf("Perlu Bimbingan", "Berkembang", "Mahir"))
     val wizardAdditionalNotes = MutableStateFlow("")
+    val wizardGenerationMode = MutableStateFlow(GenerationMode.GEMINI_AI)
 
     val generationState = MutableStateFlow<GenerationState>(GenerationState.Idle)
     val isEnhancingSection = MutableStateFlow(false)
@@ -345,6 +352,11 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
         wizardTimeAllocation.value = preset.timeAllocation
         wizardModel.value = preset.model
         wizardSelectedDimensi.value = preset.dimensi
+        if (preset.ppra.isNotEmpty()) {
+            wizardSelectedPpra.value = preset.ppra
+        } else if (KurikulumMerdekaReferenceData.isMadrasahSubject(preset.subject)) {
+            wizardSelectedPpra.value = listOf("Berkeadaban (Ta'addub)", "Keteladanan (Qudwah)", "Mengambil Jalan Tengah (Tawassuth)")
+        }
         navigateTo(Screen.Wizard)
     }
 
@@ -358,6 +370,16 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
         wizardSelectedDimensi.value = current
     }
 
+    fun togglePpra(ppraTitle: String) {
+        val current = wizardSelectedPpra.value.toMutableList()
+        if (current.contains(ppraTitle)) {
+            if (current.size > 1) current.remove(ppraTitle)
+        } else {
+            current.add(ppraTitle)
+        }
+        wizardSelectedPpra.value = current
+    }
+
     fun toggleGayaBelajar(gaya: String) {
         val current = wizardGayaBelajar.value.toMutableList()
         if (current.contains(gaya)) {
@@ -368,38 +390,60 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
         wizardGayaBelajar.value = current
     }
 
-    fun startAIGeneration() {
+    fun startAIGeneration(forceOffline: Boolean = false) {
         val soundManager = com.example.util.SoundManager.getInstance(getApplication())
         soundManager.playSfx(com.example.util.AiSfxType.AI_START_GENERATING)
 
         viewModelScope.launch {
-            generationState.value = GenerationState.Generating("Menganalisis Capaian Pembelajaran & Dimensi P3...")
-
+            val isMadrasahSubject = KurikulumMerdekaReferenceData.isMadrasahSubject(wizardSubject.value)
+            
             val matchedCP = KurikulumMerdekaReferenceData.findMatchingCP(
                 wizardSubject.value,
                 wizardFase.value.code,
                 wizardTopic.value
             )
 
-            generationState.value = GenerationState.Generating("Menyusun Kegiatan Berdiferensiasi & Sintaks ${wizardModel.value}...")
-
-            val result = GeminiService.generateModulAjarAI(
-                context = getApplication(),
-                teacherName = wizardTeacherName.value,
-                schoolName = wizardSchoolName.value,
-                fase = wizardFase.value.code,
-                grade = wizardGrade.value,
-                subject = wizardSubject.value,
-                topic = wizardTopic.value,
-                timeAllocation = wizardTimeAllocation.value,
-                semester = wizardSemester.value,
-                academicYear = wizardAcademicYear.value,
-                modelName = wizardModel.value,
-                selectedDimensi = wizardSelectedDimensi.value,
-                targetGayaBelajar = wizardGayaBelajar.value,
-                targetKesiapan = wizardKesiapan.value,
-                additionalNotes = wizardAdditionalNotes.value
-            )
+            val result: Result<GeneratedModulContent> = if (forceOffline) {
+                generationState.value = GenerationState.Generating("⚡ Menyusun Draf Modul Ajar (Engine Lokal Offline)...")
+                val offlineResult = com.example.data.ai.OfflineCurriculumEngine.generateCompleteModul(
+                    teacherName = wizardTeacherName.value,
+                    schoolName = wizardSchoolName.value,
+                    fase = wizardFase.value.code,
+                    grade = wizardGrade.value,
+                    subject = wizardSubject.value,
+                    topic = wizardTopic.value,
+                    timeAllocation = wizardTimeAllocation.value,
+                    semester = wizardSemester.value,
+                    academicYear = wizardAcademicYear.value,
+                    modelName = wizardModel.value,
+                    selectedDimensi = wizardSelectedDimensi.value,
+                    selectedPpra = wizardSelectedPpra.value,
+                    targetGayaBelajar = wizardGayaBelajar.value,
+                    targetKesiapan = wizardKesiapan.value,
+                    additionalNotes = wizardAdditionalNotes.value
+                )
+                Result.success(offlineResult)
+            } else {
+                generationState.value = GenerationState.Generating(if (isMadrasahSubject) "✨ Menghubungi Gemini AI (CP Kemenag & PPRA)..." else "✨ Menghubungi Google Gemini AI Engine...")
+                GeminiService.generateModulAjarAI(
+                    context = getApplication(),
+                    teacherName = wizardTeacherName.value,
+                    schoolName = wizardSchoolName.value,
+                    fase = wizardFase.value.code,
+                    grade = wizardGrade.value,
+                    subject = wizardSubject.value,
+                    topic = wizardTopic.value,
+                    timeAllocation = wizardTimeAllocation.value,
+                    semester = wizardSemester.value,
+                    academicYear = wizardAcademicYear.value,
+                    modelName = wizardModel.value,
+                    selectedDimensi = wizardSelectedDimensi.value,
+                    selectedPpra = wizardSelectedPpra.value,
+                    targetGayaBelajar = wizardGayaBelajar.value,
+                    targetKesiapan = wizardKesiapan.value,
+                    additionalNotes = wizardAdditionalNotes.value
+                )
+            }
 
             result.onSuccess { content ->
                 val entity = ModulAjarEntity(

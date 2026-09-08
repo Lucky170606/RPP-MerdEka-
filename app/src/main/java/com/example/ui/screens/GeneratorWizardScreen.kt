@@ -33,6 +33,7 @@ import com.example.ui.components.AppHeader
 import com.example.ui.components.BadgeChip
 import com.example.ui.components.SectionHeader
 import com.example.ui.theme.*
+import com.example.ui.viewmodel.GenerationMode
 import com.example.ui.viewmodel.GenerationState
 import com.example.ui.viewmodel.ModulViewModel
 import com.example.ui.viewmodel.Screen
@@ -56,9 +57,11 @@ fun GeneratorWizardScreen(
     val academicYear by viewModel.wizardAcademicYear.collectAsStateWithLifecycle()
     val selectedModel by viewModel.wizardModel.collectAsStateWithLifecycle()
     val selectedDimensi by viewModel.wizardSelectedDimensi.collectAsStateWithLifecycle()
+    val selectedPpra by viewModel.wizardSelectedPpra.collectAsStateWithLifecycle()
     val selectedGayaBelajar by viewModel.wizardGayaBelajar.collectAsStateWithLifecycle()
     val selectedKesiapan by viewModel.wizardKesiapan.collectAsStateWithLifecycle()
     val additionalNotes by viewModel.wizardAdditionalNotes.collectAsStateWithLifecycle()
+    val generationMode by viewModel.wizardGenerationMode.collectAsStateWithLifecycle()
 
     val generationState by viewModel.generationState.collectAsStateWithLifecycle()
 
@@ -100,11 +103,13 @@ fun GeneratorWizardScreen(
             Surface(
                 tonalElevation = 6.dp,
                 shadowElevation = 8.dp,
-                color = MaterialTheme.colorScheme.surface
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .navigationBarsPadding()
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
@@ -138,19 +143,37 @@ fun GeneratorWizardScreen(
                             Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
                         }
                     } else {
-                        Button(
-                            onClick = { viewModel.startAIGeneration() },
-                            enabled = generationState !is GenerationState.Generating,
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            modifier = Modifier.testTag("btn_wizard_generate")
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Generate Modul Ajar AI", fontWeight = FontWeight.Bold)
+                            // Tombol Offline Generate
+                            OutlinedButton(
+                                onClick = { viewModel.startAIGeneration(forceOffline = true) },
+                                enabled = generationState !is GenerationState.Generating,
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.testTag("btn_wizard_generate_offline")
+                            ) {
+                                Icon(Icons.Default.FlashOn, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.secondary)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Offline", fontWeight = FontWeight.SemiBold)
+                            }
+
+                            // Tombol Utama Gemini AI Generate (di kotak merah)
+                            Button(
+                                onClick = { viewModel.startAIGeneration(forceOffline = false) },
+                                enabled = generationState !is GenerationState.Generating,
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                modifier = Modifier.testTag("btn_wizard_generate")
+                            ) {
+                                Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Generate Modul Ajar AI", fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
@@ -490,6 +513,66 @@ fun GeneratorWizardScreen(
                     }
                 }
 
+                // PPRA (Profil Pelajar Rahmatan Lil 'Alamin) for Madrasah / Kemenag
+                val isMadrasah = KurikulumMerdekaReferenceData.isMadrasahSubject(selectedSubject) || schoolName.contains("MI", ignoreCase = true) || schoolName.contains("MTs", ignoreCase = true) || schoolName.contains("MA", ignoreCase = true) || schoolName.contains("Madrasah", ignoreCase = true)
+                if (isMadrasah) {
+                    item {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        SectionHeader(
+                            title = "Nilai Profil Pelajar Rahmatan Lil 'Alamin (PPRA - Kemenag):",
+                            icon = Icons.Default.VolunteerActivism
+                        )
+                        Text(
+                            text = "Khas Kurikulum Merdeka Madrasah (KMA 450/2024). Pilih nilai karakter moderasi beragama:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
+
+                    items(KurikulumMerdekaReferenceData.PROFIL_PELAJAR_RAHMATAN_LIL_ALAMIN) { ppra ->
+                        val isSelected = selectedPpra.any { it.contains(ppra.title.substringBefore("(").trim()) || ppra.title.contains(it) }
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { viewModel.togglePpra(ppra.title) },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surface
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (isSelected) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = isSelected,
+                                    onCheckedChange = { viewModel.togglePpra(ppra.title) },
+                                    colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.tertiary)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Column {
+                                    Text(
+                                        text = ppra.title,
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = if (isSelected) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = ppra.description,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 2
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Model Pembelajaran Picker
                 item {
                     SectionHeader(
@@ -737,8 +820,247 @@ fun GeneratorWizardScreen(
                             SummaryItemRow("Alokasi Waktu", timeAllocation)
                             SummaryItemRow("Model Belajar", selectedModel.substringBefore("(").trim())
                             SummaryItemRow("Dimensi P3", selectedDimensi.joinToString(", "))
+                            val isMadrasahSummary = KurikulumMerdekaReferenceData.isMadrasahSubject(selectedSubject) || schoolName.contains("MI", ignoreCase = true) || schoolName.contains("MTs", ignoreCase = true) || schoolName.contains("MA", ignoreCase = true) || schoolName.contains("Madrasah", ignoreCase = true) || selectedPpra.isNotEmpty()
+                            if (isMadrasahSummary && selectedPpra.isNotEmpty()) {
+                                SummaryItemRow("Nilai PPRA (Kemenag)", selectedPpra.joinToString(", "))
+                            }
                             SummaryItemRow("Gaya Belajar", selectedGayaBelajar.joinToString(", "))
                             SummaryItemRow("Satuan Pendidikan", "$schoolName ($teacherName)")
+                        }
+                    }
+                }
+
+                // PEMILIHAN MODE GENERATOR (GEMINI AI vs OFFLINE ENGINE)
+                item {
+                    SectionHeader(
+                        title = "Pilih Mode Pembuatan Modul Ajar",
+                        icon = Icons.Default.Tune
+                    )
+                }
+
+                // OPSI 1: GEMINI AI AUTO-GENERATE (ONLINE / CLOUD)
+                item {
+                    val isSelected = generationMode == GenerationMode.GEMINI_AI
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.wizardGenerationMode.value = GenerationMode.GEMINI_AI }
+                            .testTag("card_mode_gemini_ai"),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f) else MaterialTheme.colorScheme.surface
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(
+                            width = if (isSelected) 2.dp else 1.dp,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(38.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Default.AutoAwesome,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
+                                    Column {
+                                        Text(
+                                            text = "Gemini AI Auto-Generate",
+                                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "Model Gemini 3.5 Flash • Cloud Engine",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                                BadgeChip(
+                                    text = "Rekomendasi Utama ✨",
+                                    backgroundColor = MaterialTheme.colorScheme.primary,
+                                    textColor = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+
+                            Text(
+                                text = "Menyusun draf modul ajar kaya pedagogik dengan kemampuan adaptasi cerdas:",
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    text = "✨ Diferensiasi Konten, Proses & Produk berjenjang",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "✨ Pemantik HOTS kontekstual & Pemahaman Bermakna mendalam",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "✨ Asesmen Diagnostik, Formatif, Sumatif & Rubrik Skala 1-4",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "✨ Lembar Kerja Peserta Didik (LKPD) & Bahan Bacaan Siap Pakai",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Button(
+                                onClick = {
+                                    viewModel.wizardGenerationMode.value = GenerationMode.GEMINI_AI
+                                    viewModel.startAIGeneration(forceOffline = false)
+                                },
+                                enabled = generationState !is GenerationState.Generating,
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("btn_action_generate_gemini_ai")
+                            ) {
+                                Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Generate dengan Gemini AI", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+
+                // OPSI 2: GENERATOR CEPAT (OFFLINE ENGINE - LOKAL)
+                item {
+                    val isSelected = generationMode == GenerationMode.OFFLINE
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.wizardGenerationMode.value = GenerationMode.OFFLINE }
+                            .testTag("card_mode_offline"),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSelected) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f) else MaterialTheme.colorScheme.surface
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(
+                            width = if (isSelected) 2.dp else 1.dp,
+                            color = if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(38.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Default.FlashOn,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.secondary,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
+                                    Column {
+                                        Text(
+                                            text = "Generator Cepat (Offline Engine)",
+                                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "Kurikulum Standar • Instan 100% Offline",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.secondary
+                                        )
+                                    }
+                                }
+                                BadgeChip(
+                                    text = "Instan & Hemat Kuota ⚡",
+                                    backgroundColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    textColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+
+                            Text(
+                                text = "Menyusun modul standar resmi Kurikulum Merdeka & Kemenag langsung dari database lokal HP:",
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    text = "⚡ 100% Bebas Kuota & Tidak Memerlukan Sambungan Internet",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "⚡ Menggunakan Capaian Pembelajaran resmi Kemendikbud & Kemenag",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "⚡ Format lengkap: Identitas, Sintaks, Rubrik & LKPD Standar",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            OutlinedButton(
+                                onClick = {
+                                    viewModel.wizardGenerationMode.value = GenerationMode.OFFLINE
+                                    viewModel.startAIGeneration(forceOffline = true)
+                                },
+                                enabled = generationState !is GenerationState.Generating,
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("btn_action_generate_offline")
+                            ) {
+                                Icon(Icons.Default.FlashOn, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.secondary)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Generate Instan (Offline Engine)", fontWeight = FontWeight.SemiBold)
+                            }
                         }
                     }
                 }

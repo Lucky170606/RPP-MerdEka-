@@ -17,10 +17,12 @@ object OfflineCurriculumEngine {
         academicYear: String,
         modelName: String,
         selectedDimensi: List<String>,
+        selectedPpra: List<String> = emptyList(),
         targetGayaBelajar: List<String>,
         targetKesiapan: List<String>,
         additionalNotes: String
     ): GeneratedModulContent {
+        val isMadrasah = KurikulumMerdekaReferenceData.isMadrasahSubject(subject) || schoolName.contains("MI", ignoreCase = true) || schoolName.contains("MTs", ignoreCase = true) || schoolName.contains("MA", ignoreCase = true) || schoolName.contains("Madrasah", ignoreCase = true) || selectedPpra.isNotEmpty()
         val matchedCP = KurikulumMerdekaReferenceData.findMatchingCP(subject, fase, topic)
         val cpText = matchedCP?.capaianText ?: "Peserta didik mampu memahami konsep dasar, menganalisis hubungan sebab-akibat, serta mengaplikasikan pengetahuan $topic dalam pemecahan masalah nyata."
         val elemen = matchedCP?.elemen ?: "Pemahaman Konsep & Keterampilan Proses"
@@ -35,13 +37,22 @@ object OfflineCurriculumEngine {
             3. $tp3
         """.trimIndent()
 
-        val dimensiText = if (selectedDimensi.isNotEmpty()) {
+        val p3Text = if (selectedDimensi.isNotEmpty()) {
             selectedDimensi.mapIndexed { idx, dim ->
                 "${idx + 1}. $dim: Mengembangkan sikap bernalar logis, kerjasama dalam tim, dan tanggung jawab terhadap tugas belajar."
             }.joinToString("\n")
         } else {
             "1. Bernalar Kritis: Menganalisis informasi dan memproses gagasan secara logis.\n2. Bergotong Royong: Berkolaborasi aktif dalam diskusi kelompok.\n3. Mandiri: Mengelola tugas dan waktu belajar secara mandiri."
         }
+
+        val ppraText = if (isMadrasah) {
+            val ppraList = if (selectedPpra.isNotEmpty()) selectedPpra else listOf("Berkeadaban (Ta'addub)", "Keteladanan (Qudwah)", "Mengambil Jalan Tengah (Tawassuth)")
+            "\n\nProfil Pelajar Rahmatan Lil 'Alamin (PPRA - Kemenag):\n" + ppraList.mapIndexed { idx, p ->
+                "- $p: Menanamkan nilai moderasi beragama dan budi pekerti luhur."
+            }.joinToString("\n")
+        } else ""
+
+        val dimensiText = p3Text + ppraText
 
         val sintaks = KurikulumMerdekaReferenceData.MODEL_PEMBELAJARAN_LIST
             .firstOrNull { it.name.contains(modelName, ignoreCase = true) || modelName.contains(it.name, ignoreCase = true) }

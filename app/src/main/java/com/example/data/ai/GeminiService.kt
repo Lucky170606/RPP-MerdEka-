@@ -5,6 +5,7 @@ import android.util.Log
 import com.example.data.model.AssessmentDocument
 import com.example.data.model.GeneratedModulContent
 import com.example.data.model.KisiKisiItem
+import com.example.data.model.KurikulumMerdekaReferenceData
 import com.example.data.model.SoalHotsItem
 import com.example.data.model.P5ProjectModul
 import com.example.util.ApiKeyManager
@@ -295,35 +296,45 @@ object GeminiService {
         academicYear: String,
         modelName: String,
         selectedDimensi: List<String>,
+        selectedPpra: List<String> = emptyList(),
         targetGayaBelajar: List<String>,
         targetKesiapan: List<String>,
         additionalNotes: String
     ): Result<GeneratedModulContent> = withContext(Dispatchers.IO) {
         val apiKey = ApiKeyManager.getApiKey(context)
+        val isMadrasah = KurikulumMerdekaReferenceData.isMadrasahSubject(subject) || schoolName.contains("MI", ignoreCase = true) || schoolName.contains("MTs", ignoreCase = true) || schoolName.contains("MA", ignoreCase = true) || schoolName.contains("Madrasah", ignoreCase = true) || selectedPpra.isNotEmpty()
+
+        val ppraSection = if (selectedPpra.isNotEmpty()) {
+            "- Nilai Profil Pelajar Rahmatan Lil 'Alamin (PPRA Kemenag): ${selectedPpra.joinToString(", ")}"
+        } else if (isMadrasah) {
+            "- Nilai Profil Pelajar Rahmatan Lil 'Alamin (PPRA Kemenag): Berkeadaban (Ta'addub), Keteladanan (Qudwah), Mengambil Jalan Tengah (Tawassuth)"
+        } else ""
 
         val systemPrompt = """
-            Anda adalah Konsultan Ahli Kurikulum Merdeka Kemendikbudristek RI dan Pakar Pedagogik Pembelajaran Berdiferensiasi.
+            Anda adalah Konsultan Ahli Kurikulum Merdeka (Kemendikbudristek RI & Kemenag RI) dan Pakar Pedagogik Pembelajaran Berdiferensiasi.
             Tugas Anda adalah membuat dokumen Modul Ajar (RPP Plus) Kurikulum Merdeka yang sangat lengkap, operasional, berbobot, dan siap cetak.
             
             Informasi Input:
             - Guru: $teacherName
-            - Satuan Pendidikan: $schoolName
+            - Satuan Pendidikan: $schoolName ${if (isMadrasah) "(Madrasah / Kemenag RI)" else "(Sekolah Umum / Kemendikbudristek)"}
             - Jenjang / Fase / Kelas: $fase ($grade)
             - Mata Pelajaran: $subject
             - Topik / Materi: $topic
             - Alokasi Waktu: $timeAllocation
             - Semester / Tahun Ajaran: $semester / $academicYear
             - Model Pembelajaran: $modelName
-            - Dimensi Profil Pelajar Pancasila: ${selectedDimensi.joinToString(", ")}
+            - Dimensi Profil Pelajar Pancasila (P3): ${selectedDimensi.joinToString(", ")}
+            $ppraSection
             - Gaya Belajar Fokus: ${targetGayaBelajar.joinToString(", ")}
             - Tingkat Kesiapan Siswa: ${targetKesiapan.joinToString(", ")}
             - Catatan Khusus Guru: $additionalNotes
+            ${if (isMadrasah) "- Catatan Madrasah: Integrasikan dalil Al-Qur'an/Hadis berharakat lengkap serta nilai moderasi beragama / Rahmatan Lil 'Alamin jika relevan." else ""}
 
             Harap balas HANYA dengan JSON murni tanpa markdown wrapper (jangan pakai ```json ... ```, langsung kurung kurawal JSON) dengan format key berikut:
             {
               "identitas": "String rincian kop identitas modul ajar",
               "kompetensiAwal": "String pengetahuan prasyarat",
-              "profilPelajarPancasila": "String 2-4 dimensi P3 terpilih beserta keterangannya",
+              "profilPelajarPancasila": "String 2-4 dimensi P3 terpilih ${if (isMadrasah) "serta integrasi nilai PPRA" else ""} beserta keterangannya",
               "saranaPrasarana": "String media, alat peraga, sumber belajar",
               "targetPesertaDidik": "String target reguler, pencapaian tinggi, dan berkesulitan",
               "modelPembelajaran": "String model dan metode pembelajaran",
@@ -349,7 +360,7 @@ object GeminiService {
             Log.w(TAG, "GEMINI_API_KEY is not configured, fallback to high-quality Offline Engine")
             val offlineResult = OfflineCurriculumEngine.generateCompleteModul(
                 teacherName, schoolName, fase, grade, subject, topic, timeAllocation,
-                semester, academicYear, modelName, selectedDimensi, targetGayaBelajar,
+                semester, academicYear, modelName, selectedDimensi, selectedPpra, targetGayaBelajar,
                 targetKesiapan, additionalNotes
             )
             return@withContext Result.success(offlineResult)
@@ -361,7 +372,7 @@ object GeminiService {
                 Log.e(TAG, "All models failed, falling back to offline engine: ${executionResult.exceptionOrNull()?.message}")
                 val offlineResult = OfflineCurriculumEngine.generateCompleteModul(
                     teacherName, schoolName, fase, grade, subject, topic, timeAllocation,
-                    semester, academicYear, modelName, selectedDimensi, targetGayaBelajar,
+                    semester, academicYear, modelName, selectedDimensi, selectedPpra, targetGayaBelajar,
                     targetKesiapan, additionalNotes
                 )
                 return@withContext Result.success(offlineResult)
@@ -401,7 +412,7 @@ object GeminiService {
             Log.e(TAG, "Error generating AI content, falling back to offline engine", e)
             val offlineResult = OfflineCurriculumEngine.generateCompleteModul(
                 teacherName, schoolName, fase, grade, subject, topic, timeAllocation,
-                semester, academicYear, modelName, selectedDimensi, targetGayaBelajar,
+                semester, academicYear, modelName, selectedDimensi, selectedPpra, targetGayaBelajar,
                 targetKesiapan, additionalNotes
             )
             Result.success(offlineResult)

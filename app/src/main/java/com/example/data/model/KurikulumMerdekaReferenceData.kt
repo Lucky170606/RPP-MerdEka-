@@ -70,6 +70,14 @@ object KurikulumMerdekaReferenceData {
         }
     }
 
+    fun isMadrasahSubject(subject: String): Boolean {
+        return when (subject) {
+            "Al-Qur'an Hadis", "Akidah Akhlak", "Fikih", "Sejarah Kebudayaan Islam (SKI)",
+            "Bahasa Arab", "Ushul Fikih", "Ilmu Tafsir", "Ilmu Hadis" -> true
+            else -> false
+        }
+    }
+
     val JENIS_ASESMEN_LIST = listOf(
         "Asesmen Formatif (Selama Proses)",
         "Asesmen Sumatif (Akhir Lingkup Materi)",
@@ -162,6 +170,70 @@ object KurikulumMerdekaReferenceData {
                 "Memiliki keluwesan berpikir dalam mencari alternatif solusi"
             ),
             description = "Mampu memodifikasi dan menghasilkan sesuatu yang orisinal, bermakna, bermanfaat, dan berdampak."
+        )
+    )
+
+    // 10 Nilai Utama Profil Pelajar Rahmatan Lil 'Alamin (PPRA) Kemenag RI (KMA No. 347/2022)
+    val PROFIL_PELAJAR_RAHMATAN_LIL_ALAMIN = listOf(
+        PpraValueDimension(
+            id = "ppra_berkeadaban",
+            title = "Berkeadaban (Ta'addub)",
+            description = "Menjunjung tinggi akhlak mulia, karakter kesantunan, adab, dan sopan santun dalam berinteraksi.",
+            subValues = listOf("Kesantunan berbahasa dan bersikap", "Menghormati guru, orang tua, dan sesama", "Integritas moral")
+        ),
+        PpraValueDimension(
+            id = "ppra_keteladanan",
+            title = "Keteladanan (Qudwah)",
+            description = "Mengambil inisiatif, memelopori kebaikan, dan menjadi uswah hasanah (panutan teladan) bagi orang lain.",
+            subValues = listOf("Memelopori kebaikan", "Konsistensi ucapan dan perbuatan", "Kepemimpinan amanah")
+        ),
+        PpraValueDimension(
+            id = "ppra_kewarganegaraan",
+            title = "Kewarganegaraan & Kebangsaan (Muwathanah)",
+            description = "Menunjukkan rasa cinta tanah air, kesetiaan pada NKRI, dan komitmen menegakkan persatuan bangsa.",
+            subValues = listOf("Cinta tanah air", "Kepatuhan pada hukum dan norma", "Penghargaan keragaman suku bangsa")
+        ),
+        PpraValueDimension(
+            id = "ppra_moderat",
+            title = "Mengambil Jalan Tengah (Tawassuth)",
+            description = "Memahami dan mengamalkan ajaran agama secara tidak ekstrem (ifrath dan tafrith) dan bersikap proporsional.",
+            subValues = listOf("Menghindari pemikiran ekstrem", "Menjaga keseimbangan dalam beragama", "Sikap bijaksana dalam menyikapi perbedaan")
+        ),
+        PpraValueDimension(
+            id = "ppra_berimbang",
+            title = "Berimbang (Tawazun)",
+            description = "Keseimbangan menyeluruh antara kepentingan dunia dan akhirat, rasio dan wahyu, hak dan kewajiban.",
+            subValues = listOf("Keseimbangan rohani dan jasmani", "Keseimbangan ilmu dan amal", "Keseimbangan hak dan kewajiban")
+        ),
+        PpraValueDimension(
+            id = "ppra_adil",
+            title = "Lurus dan Tegas / Adil (I'tidal)",
+            description = "Menempatkan sesuatu pada tempatnya dan memperlakukan hak serta kewajiban secara proporsional dan adil.",
+            subValues = listOf("Bertindak adil tanpa diskriminasi", "Objektivitas dalam menilai", "Membela kebenaran secara santun")
+        ),
+        PpraValueDimension(
+            id = "ppra_kesetaraan",
+            title = "Kesetaraan (Musawah)",
+            description = "Menghargai martabat sesama manusia tanpa diskriminasi latar belakang suku, ras, gender, dan strata sosial.",
+            subValues = listOf("Menghormati kesetaraan gender dan sosial", "Anti-bullying dan anti-perundungan", "Inklusivitas belajar")
+        ),
+        PpraValueDimension(
+            id = "ppra_musyawarah",
+            title = "Musyawarah (Syura)",
+            description = "Mengutamakan dialog, konsultasi timbal balik, dan mufakat dalam memecahkan masalah bersama.",
+            subValues = listOf("Keterbukaan menerima kritik dan saran", "Mencari konsensus kemaslahatan", "Demokratis islami")
+        ),
+        PpraValueDimension(
+            id = "ppra_toleransi",
+            title = "Toleransi (Tasamuh)",
+            description = "Menghargai perbedaan keyakinan, budaya, tradisi, dan pendapat dengan penuh kedewasaan.",
+            subValues = listOf("Menghargai perbedaan pendapat fiqhiyyah", "Kerukunan antarumat beragama", "Saling menghargai hak beribadah")
+        ),
+        PpraValueDimension(
+            id = "ppra_dinamis",
+            title = "Dinamis dan Inovatif (Tathawwur wa Ibtikar)",
+            description = "Selalu terbuka pada perubahan positif, pembaharuan iptek, dan adaptif terhadap kemajuan zaman.",
+            subValues = listOf("Kreativitas pemikiran", "Pemanfaatan teknologi secara bijak", "Pikiran kritis dan solutif")
         )
     )
 
@@ -646,7 +718,8 @@ object KurikulumMerdekaReferenceData {
             topic = "Hukum Bacaan Tajwid Lanjutan (Mad Far'i, Waqaf, dan Ibtida')",
             timeAllocation = "2 JP (2 x 45 Menit)",
             model = "Direct Instruction (Eksplisit Interaktif)",
-            dimensi = listOf("Beriman, Bertakwa kepada Tuhan YME, dan Berakhlak Mulia", "Bernalar Kritis", "Mandiri")
+            dimensi = listOf("Beriman, Bertakwa kepada Tuhan YME, dan Berakhlak Mulia", "Bernalar Kritis", "Mandiri"),
+            ppra = listOf("Berkeadaban (Ta'addub)", "Keteladanan (Qudwah)")
         ),
         QuickPreset(
             title = "Fikih Munakahat & Syariat (Fikih MA)",
@@ -656,7 +729,8 @@ object KurikulumMerdekaReferenceData {
             topic = "Fikih Munakahat: Syarat, Rukun Nikah, Mahar, Walimah, dan Hak-Kewajiban Suami Istri",
             timeAllocation = "2 JP (2 x 45 Menit)",
             model = "Problem-Based Learning (PBL)",
-            dimensi = listOf("Beriman, Bertakwa kepada Tuhan YME, dan Berakhlak Mulia", "Bernalar Kritis", "Bergotong Royong")
+            dimensi = listOf("Beriman, Bertakwa kepada Tuhan YME, dan Berakhlak Mulia", "Bernalar Kritis", "Bergotong Royong"),
+            ppra = listOf("Mengambil Jalan Tengah (Tawassuth)", "Berkeadaban (Ta'addub)", "Lurus dan Tegas (I'tidal)")
         ),
         QuickPreset(
             title = "Sejarah Bani Abbasiyah & Baitul Hikmah (SKI MTs)",
@@ -666,7 +740,8 @@ object KurikulumMerdekaReferenceData {
             topic = "Kemajuan Ilmu Pengetahuan Masa Bani Abbasiyah",
             timeAllocation = "2 JP (2 x 40 Menit)",
             model = "Inquiry Learning",
-            dimensi = listOf("Berkebinekaan Global", "Bernalar Kritis", "Kreatif")
+            dimensi = listOf("Berkebinekaan Global", "Bernalar Kritis", "Kreatif"),
+            ppra = listOf("Toleransi (Tasamuh)", "Dinamis dan Inovatif (Tathawwur wa Ibtikar)")
         )
     )
 }
@@ -679,5 +754,13 @@ data class QuickPreset(
     val topic: String,
     val timeAllocation: String,
     val model: String,
-    val dimensi: List<String>
+    val dimensi: List<String>,
+    val ppra: List<String> = emptyList()
+)
+
+data class PpraValueDimension(
+    val id: String,
+    val title: String,
+    val description: String,
+    val subValues: List<String>
 )
