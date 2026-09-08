@@ -174,6 +174,24 @@ object OfflineAssessmentEngine {
                     )
                 )
             }
+            "Al-Qur'an Hadis", "Akidah Akhlak", "Fikih", "Sejarah Kebudayaan Islam (SKI)", "Bahasa Arab", "Ushul Fikih", "Ilmu Tafsir", "Ilmu Hadis", "Pendidikan Agama Islam dan Budi Pekerti" -> when (fase) {
+                "Fase F", "Fase E" -> Pair(
+                    listOf("C4 (Menganalisis)", "C5 (Mengevaluasi)", "C6 (Mencipta)"),
+                    listOf(
+                        Triple("Studi Kasus Kontekstual & Dalil:", "Di era modern, muncul problematika kontemporer yang bersinggungan langsung dengan kajian $topic dan memerlukan ketetapan hukum/ijtihad yang bijak.", "Berdasarkan dalil Al-Qur'an, Hadis, serta kaidah keilmuan yang relevan, analisislah solusi hukum dan hikmah dari fenomena tersebut!"),
+                        Triple("Komparasi & Evaluasi Pendapat Ulama:", "Dalam meninjau permasalahan seputar $topic, terdapat ragam pandangan di kalangan mufassir / fuqaha / pakar sejarah.", "Evaluasilah landasan dalil dan relevansi masing-masing argumen dalam konteks kebangsaan dan moderasi beragama!"),
+                        Triple("Rekonstruksi & Keteladanan Moral:", "Tantangan dekadensi moral dan globalisasi menuntut implementasi nilai-nilai substantif dari materi $topic.", "Rancanglah sebuah rencana aksi / panduan keteladanan akhlak yang aplikatif bagi generasi muda saat ini!")
+                    )
+                )
+                else -> Pair(
+                    listOf("C2 (Memahami)", "C3 (Menerapkan)", "C4 (Menganalisis)"),
+                    listOf(
+                        Triple("Penghayatan Nilai Ibadah & Moral:", "Kisah teladan dalam pembelajaran materi $topic memberikan gambaran nyata tentang ketaatan kepada Allah SWT dan akhlak terpuji.", "Sebutkan dan jelaskan hikmah utama yang dapat dipetik serta diamalkan dalam kehidupan sehari-hari!"),
+                        Triple("Penerapan Kaidah & Hukum Sederhana:", "Dalam pelaksanaan ibadah dan muamalah terkait materi $topic di lingkungan sekolah.", "Bagaimanakah tata cara yang benar sesuai dengan rukun dan syarat yang telah ditetapkan?"),
+                        Triple("Analisis Sebab-Akibat:", "Terjadi suatu peristiwa sosial yang berkaitan dengan penerapan adab dan pemahaman materi $topic.", "Analisis mengapa perilaku tersebut dapat terjadi dan apa solusi terbaiknya?")
+                    )
+                )
+            }
             else -> Pair(
                 listOf("C3 (Menerapkan)", "C4 (Menganalisis)", "C5 (Mengevaluasi)"),
                 listOf(
