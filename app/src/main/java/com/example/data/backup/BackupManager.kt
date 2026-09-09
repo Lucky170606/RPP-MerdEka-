@@ -28,9 +28,11 @@ class BackupManager(private val context: Context, private val database: AppDatab
             val atpList = database.atpDao().getAllAtpDirect()
             val assessmentList = database.assessmentDao().getAllAssessmentsDirect()
             val p5AssessmentList = database.p5AssessmentDao().getAllP5AssessmentsDirect()
+            val kktpList = database.kktpDao().getAllKktpDirect()
+            val observationList = database.observationJournalDao().getAllObservationsDirect()
             val teacherProfile = TeacherProfile.loadFromPreferences(context)
 
-            val backup = DatabaseBackup(modulList, protaList, promesList, atpList, assessmentList, p5AssessmentList, teacherProfile)
+            val backup = DatabaseBackup(modulList, protaList, promesList, atpList, assessmentList, p5AssessmentList, kktpList, observationList, teacherProfile)
             moshi.adapter(DatabaseBackup::class.java).toJson(backup)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -49,6 +51,8 @@ class BackupManager(private val context: Context, private val database: AppDatab
                     backup.atpList.forEach { database.atpDao().insertAtp(it) }
                     backup.assessmentList.forEach { database.assessmentDao().insertAssessment(it) }
                     backup.p5AssessmentList.forEach { database.p5AssessmentDao().insertP5Assessment(it) }
+                    backup.kktpList.forEach { database.kktpDao().insertKktp(it) }
+                    backup.observationList.forEach { database.observationJournalDao().insertObservation(it) }
                 }
                 backup.teacherProfile?.let {
                     TeacherProfile.saveToPreferences(context, it, sync = true)

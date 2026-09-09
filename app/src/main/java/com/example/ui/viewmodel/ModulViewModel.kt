@@ -70,6 +70,8 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
     private val assessmentDao: com.example.data.local.AssessmentDao
     private val p5AssessmentDao: com.example.data.local.P5AssessmentDao
     private val calendarDao: AcademicCalendarDao
+    private val kktpDao: com.example.data.local.KktpDao
+    private val observationJournalDao: com.example.data.local.ObservationJournalDao
     private val backupManager: com.example.data.backup.BackupManager
 
     val allProta: Flow<List<ProtaEntity>>
@@ -77,6 +79,8 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
     val allAtp: Flow<List<AtpEntity>>
     val allSavedAssessments: Flow<List<com.example.data.local.AssessmentEntity>>
     val allSavedP5Assessments: Flow<List<com.example.data.local.P5AssessmentEntity>>
+    val allSavedKktp: Flow<List<com.example.data.local.KktpEntity>>
+    val allSavedObservations: Flow<List<com.example.data.local.ObservationJournalEntity>>
 
     private val moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
@@ -149,6 +153,8 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
         assessmentDao = db.assessmentDao()
         p5AssessmentDao = db.p5AssessmentDao()
         calendarDao = db.academicCalendarDao()
+        kktpDao = db.kktpDao()
+        observationJournalDao = db.observationJournalDao()
         backupManager = com.example.data.backup.BackupManager(application, db)
 
         allProta = protaDao.getAllProta()
@@ -156,6 +162,8 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
         allAtp = atpDao.getAllAtp()
         allSavedAssessments = assessmentDao.getAllAssessments()
         allSavedP5Assessments = p5AssessmentDao.getAllP5Assessments()
+        allSavedKktp = kktpDao.getAllKktp()
+        allSavedObservations = observationJournalDao.getAllObservations()
 
         allModul = searchQuery
             .debounce(200)

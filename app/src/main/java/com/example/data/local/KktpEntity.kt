@@ -1,0 +1,17 @@
+package com.example.data.local
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "kktp_rapor_history")
+data class KktpEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val title: String,
+    val subject: String,
+    val fase: String,
+    val grade: String,
+    val semester: String,
+    val jsonContent: String,
+    val createdAt: Long = System.currentTimeMillis()
+)
