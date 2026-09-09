@@ -84,7 +84,9 @@ fun ObservationJournalScreen(
         )
     }
 
-    val peerQuestions = remember { AdvancedCurriculumEngine.DEFAULT_PEER_QUESTIONS }
+    val peerQuestions = remember(isMadrasah) {
+        if (isMadrasah) AdvancedCurriculumEngine.PPRA_PEER_QUESTIONS else AdvancedCurriculumEngine.DEFAULT_PEER_QUESTIONS
+    }
 
     var showAddDialog by remember { mutableStateOf(false) }
     var inputNamaSiswa by remember { mutableStateOf("") }
@@ -464,7 +466,19 @@ fun ObservationJournalScreen(
                                         shape = RoundedCornerShape(8.dp)
                                     ) {
                                         Column(modifier = Modifier.padding(10.dp)) {
-                                            Text("Narasi AI untuk Rapor ${item.namaSiswa}:", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                                Text("Narasi AI untuk Rapor ${item.namaSiswa}:", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                                                IconButton(
+                                                    onClick = {
+                                                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("AI Student Summary", studentAiSummary))
+                                                        android.widget.Toast.makeText(context, "Narasi disalin", android.widget.Toast.LENGTH_SHORT).show()
+                                                    },
+                                                    modifier = Modifier.size(24.dp)
+                                                ) {
+                                                    Icon(Icons.Default.ContentCopy, contentDescription = "Salin", modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                                                }
+                                            }
                                             Spacer(Modifier.height(2.dp))
                                             Text(studentAiSummary, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface, lineHeight = 15.sp)
                                         }

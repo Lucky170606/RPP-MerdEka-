@@ -1160,4 +1160,12 @@ object AdvancedCurriculumEngine {
         PeerAssessmentQuestion(4, "Teman saya menyampaikan ide-ide kreatif dan solutif untuk menyelesaikan tugas.", "Kreatif & Bernalar Kritis"),
         PeerAssessmentQuestion(5, "Teman saya bersikap jujur dan tidak memaksakan kehendak pada kelompok.", "Beriman & Berakhlak Mulia")
     )
+
+    val PPRA_PEER_QUESTIONS = listOf(
+        PeerAssessmentQuestion(1, "Teman saya mengajak beribadah bersama atau bersikap religius.", "Berkeadaban (Ta'addub)"),
+        PeerAssessmentQuestion(2, "Teman saya bersikap toleran terhadap perbedaan pandangan atau latar belakang.", "Toleransi (Tasamuh)"),
+        PeerAssessmentQuestion(3, "Teman saya menunjukkan sikap kasih sayang kepada semua anggota kelompok.", "Kasih Sayang (Rahmah)"),
+        PeerAssessmentQuestion(4, "Teman saya berlaku jujur dan amanah dalam melaksanakan tugas kelompok.", "Keteladanan (Qudwah)"),
+        PeerAssessmentQuestion(5, "Teman saya berpartisipasi aktif dalam kegiatan yang bermanfaat untuk kebaikan bersama.", "Dinamis & Inovatif (Tathawwur wa Ibtikar)")
+    )
 }
