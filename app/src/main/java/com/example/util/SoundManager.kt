@@ -116,7 +116,11 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
 
         // Initialize Native Offline TTS
         try {
+        try {
             tts = TextToSpeech(context.applicationContext, this)
+        } catch (e: Exception) {
+            // Handled gracefully
+        }
         } catch (e: Exception) {
             // Handled gracefully
         }
@@ -242,9 +246,6 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
                     var targetVoice: Voice? = null
 
                     if (persona.isMale) {
-                        // Scan for male voice identifiers across Google TTS, Samsung TTS, and other engines:
-                        // Google TTS: x-idc, x-ide, x-idf, x-idb
-                        // General: male, man, pria, ardi, budi, m0, m1, #male
                         targetVoice = idVoices.firstOrNull { voice ->
                             val name = voice.name.lowercase()
                             name.contains("x-idc") || name.contains("x-ide") || name.contains("x-idf") ||
@@ -258,13 +259,11 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
                             appliedPitch = 0.88f
                             appliedRate = 0.92f
                         } else {
-                            // If device only has single default female voice pack: drop formant pitch to generate natural male baritone
                             targetVoice = idVoices.firstOrNull()
                             appliedPitch = 0.70f
                             appliedRate = 0.90f
                         }
                     } else {
-                        // Female voice matching
                         targetVoice = idVoices.firstOrNull { voice ->
                             val name = voice.name.lowercase()
                             name.contains("x-dfz") || name.contains("x-ida") || name.contains("x-idd") ||
@@ -307,8 +306,7 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
      * - Inserts natural pauses after list items for smooth breathing and cadence
      */
     private fun formatForIndonesianSpeech(text: String): String {
-        val processedText = injectPausesOnRepeats(text)
-        return processedText
+        var cleanText = injectPausesOnRepeats(text)
             // Markdown Headings and bold/italic markers
             .replace(Regex("^#+\\s*", RegexOption.MULTILINE), "")
             .replace(Regex("\\*"), "")
@@ -317,18 +315,14 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
             .replace(Regex("_(.*?)_"), "$1")
             .replace(Regex("`{1,3}.*?`{1,3}"), "")
             .replace(Regex("\\[([^\\]]+)\\]\\([^\\)]+\\)"), "$1")
-            // Automatic Phonetic Translation for English Terms
-            .replace(Regex("(?i)\\bassessment\\b"), "asesmen")
-            .replace(Regex("(?i)\\blearning\\b"), "lerning")
-            .replace(Regex("(?i)\\bproject\\b"), "proyek")
-            .replace(Regex("(?i)\\bdesign\\b"), "desain")
-            .replace(Regex("(?i)\\bdifferentiation\\b"), "diferensiasi")
-            .replace(Regex("(?i)\\badaptive\\b"), "adaptif")
-            .replace(Regex("(?i)\\bstudent\\b"), "studen")
-            .replace(Regex("(?i)\\bteacher\\b"), "ticher")
-            .replace(Regex("(?i)\\bonline\\b"), "onlain")
-            .replace(Regex("(?i)\\boffline\\b"), "oflain")
-            // Educational Abbreviations Expansion
+
+        // Automatic Phonetic Translation using TtsDictionary
+        for ((term, phonetic) in TtsDictionary.termMap) {
+            cleanText = cleanText.replace(Regex("(?i)\\b$term\\b"), phonetic)
+        }
+
+        // Educational Abbreviations Expansion
+        return cleanText
             .replace(Regex("\\bRPP\\b", RegexOption.IGNORE_CASE), "R P P")
             .replace(Regex("\\bModul Ajar\\b", RegexOption.IGNORE_CASE), "Modul Ajar")
             .replace(Regex("\\bCP\\b", RegexOption.IGNORE_CASE), "Capaian Pembelajaran")
@@ -368,12 +362,6 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
             .replace(Regex("^[-*•]\\s*", RegexOption.MULTILINE), ", ")
             .replace(Regex("^\\d+\\.\\s*", RegexOption.MULTILINE), ", ")
             .replace(Regex("[|~>_=]"), " ")
-            // Punctuation and spacing cleanup
-            .replace(Regex("[.!?]"), "$0 ,,,,, ")
-            .replace(",", ", ,, ")
-            .replace(Regex("[,]{2,}"), ",")
-            .replace(Regex("\\s+"), " ")
-            .trim()
     }
 
     /**
@@ -440,6 +428,8 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
             putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f)
         }
 
+        // Simple language splitting: for now just checking for "student centered"
+        // In the future this can be improved to use a list of English terms.
         val chunks = splitIntoSentenceChunks(cleanText, 350)
         if (chunks.isEmpty()) {
             tts?.speak(cleanText, TextToSpeech.QUEUE_FLUSH, audioParams, utteranceId)
