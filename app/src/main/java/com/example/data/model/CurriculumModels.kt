@@ -60,5 +60,8 @@ data class GeneratedModulContent(
     val asesmenSumatif: String,
     val rubrikPenilaian: String,
     val remedialDanPengayaan: String,
-    val lkpdDanMateri: String
+    val lkpdDanMateri: String,
+    val refleksi: String,
+    val glosarium: String,
+    val daftarPustaka: String
 )

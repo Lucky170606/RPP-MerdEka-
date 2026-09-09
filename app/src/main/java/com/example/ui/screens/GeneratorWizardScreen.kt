@@ -447,7 +447,7 @@ fun GeneratorWizardScreen(
                         icon = Icons.Default.Diversity3
                     )
                     Text(
-                        text = "Pilih minimal 2-3 dimensi yang akan dikembangkan dalam modul ini:",
+                        text = "Pilih dimensi yang ingin dikembangkan (Opsional):",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -500,13 +500,13 @@ fun GeneratorWizardScreen(
                 val isMadrasah = KurikulumMerdekaReferenceData.isMadrasahSubject(selectedSubject) || schoolName.contains("MI", ignoreCase = true) || schoolName.contains("MTs", ignoreCase = true) || schoolName.contains("MA", ignoreCase = true) || schoolName.contains("Madrasah", ignoreCase = true)
                 if (isMadrasah) {
                     item {
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
                         SectionHeader(
                             title = "Nilai Profil Pelajar Rahmatan Lil 'Alamin (PPRA - Kemenag):",
                             icon = Icons.Default.VolunteerActivism
                         )
                         Text(
-                            text = "Khas Kurikulum Merdeka Madrasah (KMA 450/2024). Pilih nilai karakter moderasi beragama:",
+                            text = "Khas Kurikulum Merdeka Madrasah (Opsional). Pilih nilai karakter moderasi beragama jika diperlukan:",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -757,17 +757,30 @@ fun GeneratorWizardScreen(
 
                 // Catatan Khusus Guru
                 item {
-                    OutlinedTextField(
-                        value = additionalNotes,
-                        onValueChange = { viewModel.wizardAdditionalNotes.value = it },
-                        label = { Text("Instruksi / Catatan Khusus Guru (Opsional)") },
-                        placeholder = { Text("Misal: Sertakan ice breaking edukasi, fokuskan pada pemanfaatan alat peraga lokal...") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(100.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        maxLines = 4
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = additionalNotes,
+                            onValueChange = { viewModel.wizardAdditionalNotes.value = it },
+                            label = { Text("Instruksi / Catatan Khusus Guru (Opsional)") },
+                            placeholder = { Text("Misal: Sertakan ice breaking edukasi, fokuskan pada pemanfaatan alat peraga lokal...") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            maxLines = 4
+                        )
+                        OutlinedTextField(
+                            value = viewModel.wizardRefleksi.collectAsStateWithLifecycle().value,
+                            onValueChange = { viewModel.wizardRefleksi.value = it },
+                            label = { Text("Panduan Refleksi Siswa & Guru (Opsional)") },
+                            placeholder = { Text("Misal: Apa hal tersulit yang dipelajari? Bagaimana perasaanmu hari ini? Apa yang harus diperbaiki...") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            maxLines = 4
+                        )
+                    }
                 }
             }
 

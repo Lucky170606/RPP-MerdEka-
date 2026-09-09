@@ -8,21 +8,30 @@ object AdvancedCurriculumEngine {
         subject: String,
         fase: String,
         grade: String,
-        academicYear: String
+        academicYear: String,
+        isMadrasah: Boolean = false
     ): ProtaDocument {
-        android.util.Log.d("CurriculumEngine", "generateProta: subject=$subject, fase=$fase, grade=$grade")
+        android.util.Log.d("CurriculumEngine", "generateProta: subject=$subject, fase=$fase, grade=$grade, isMadrasah=$isMadrasah")
         
         val isFaseA = fase == "Fase A"
         val isFaseB = fase == "Fase B"
         val isFaseC = fase == "Fase C"
         val isSmp = fase == "Fase D"
-        val isSmaSmk = fase == "Fase E" || fase == "Fase F"
+        val isFaseE = fase == "Fase E"
+        val isFaseF = fase == "Fase F"
+        val isSmaSmk = isFaseE || isFaseF
         
-        android.util.Log.d("CurriculumEngine", "isFaseA=$isFaseA, isFaseB=$isFaseB, isFaseC=$isFaseC, isSmp=$isSmp, isSmaSmk=$isSmaSmk")
+        android.util.Log.d("CurriculumEngine", "isFaseA=$isFaseA, isFaseB=$isFaseB, isFaseC=$isFaseC, isSmp=$isSmp, isFaseE=$isFaseE, isFaseF=$isFaseF")
 
         val topicsGanjil = when (subject) {
             "Matematika" -> when {
-                isSmaSmk -> listOf(
+                isFaseF -> listOf(
+                    "Statistika Inferensial & Analisis Data Lanjut" to 24,
+                    "Kalkulus: Turunan dan Integral Fungsi" to 20,
+                    "Geometri Analitik & Transformasi" to 18,
+                    "Peluang Kejadian Majemuk" to 14
+                )
+                isFaseE -> listOf(
                     "Eksponen dan Logaritma (Sifat & Penerapan)" to 24,
                     "Barisan dan Deret Aritmatika serta Geometri" to 20,
                     "Trigonometri Dasar (Perbandingan & Sudut Istimewa)" to 18,
@@ -60,7 +69,13 @@ object AdvancedCurriculumEngine {
                 )
             }
             "IPAS", "Fisika", "Kimia", "Biologi" -> when {
-                isSmaSmk -> listOf(
+                isFaseF -> listOf(
+                    "Dinamika Rotasi & Kesetimbangan Benda Tegar" to 24,
+                    "Teori Kinetik Gas & Termodinamika Lanjutan" to 20,
+                    "Elektrodinamika & Rangkaian Arus Bolak-Balik" to 18,
+                    "Fisika Modern: Teori Relativitas & Kuantum" to 14
+                )
+                isFaseE -> listOf(
                     "Hakikat Ilmu Sains & Metode Ilmiah" to 20,
                     "Struktur Atom dan Sistem Periodik Unsur" to 20,
                     "Hukum Dasar Kimia & Stoikiometri" to 18,
@@ -76,7 +91,7 @@ object AdvancedCurriculumEngine {
                     "Rantai Makanan & Keseimbangan Ekosistem" to 20,
                     "Magnet, Listrik, dan Pemanfaatannya dalam Kehidupan" to 20,
                     "Sistem Organ Tubuh Manusia (Pernapasan & Pencernaan)" to 18,
-                    "Bumi dan Antatasiksa: Rotasi & Revolusi Bumi" to 14
+                    "Bumi dan Antariksa: Rotasi & Revolusi Bumi" to 14
                 )
                 isFaseB -> listOf(
                     "Tumbuhan Sumber Kehidupan di Bumi (Fotosintesis)" to 20,
@@ -98,7 +113,13 @@ object AdvancedCurriculumEngine {
                 )
             }
             "Bahasa Indonesia" -> when {
-                isSmaSmk -> listOf(
+                isFaseF -> listOf(
+                    "Menyusun Kritik Sastra & Esai Argumentatif" to 20,
+                    "Menganalisis Nilai Kehidupan dalam Novel Sejarah" to 18,
+                    "Penulisan Artikel Ilmiah Populer & Jurnal" to 18,
+                    "Pementasan Drama Teater & Apresiasi Sastra" to 16
+                )
+                isFaseE -> listOf(
                     "Mengkritisi Teks Laporan Hasil Observasi (LHO)" to 20,
                     "Mengembangkan Pendapat dalam Debat Ilmiah" to 18,
                     "Negosiasi dan Resolusi Konflik Sosial" to 18,
@@ -141,6 +162,226 @@ object AdvancedCurriculumEngine {
                 "Membangun Jati Diri dalam Kebhinekaan" to 18,
                 "Negara Kesatuan Republik Indonesia & Cinta Tanah Air" to 18
             )
+            "Akidah Akhlak" -> when {
+                isFaseF -> listOf(
+                    "Menghindari Perilaku Menyimpang & Dosa Besar dalam Islam" to 22,
+                    "Tasawuf & Penyucian Jiwa (Tazkiyatun Nafs) Karakter Islami" to 20,
+                    "Moderasi Beragama & Toleransi dalam Perspektif Akidah" to 18,
+                    "Evaluasi Karakter Akhlakul Karimah & Proyek Karakter" to 16
+                )
+                isFaseE -> listOf(
+                    "Tauhid Rububiyah, Uluhiyah, & Iman kepada Hari Akhir" to 22,
+                    "Akhlak Terpuji (Hikamah, Syaja'ah, 'Adalah, 'Iffah) & Menghindari Tercela" to 20,
+                    "Adab Pergaulan Remaja & Etika Penggunaan Media Sosial Islami" to 18,
+                    "Kisah Keteladanan Nabi Ulul Azmi & Tokoh Salafus Salih" to 16
+                )
+                isSmp -> listOf(
+                    "Iman kepada Allah SWT melalui Asmaul Husna (Al-'Aziz, Al-Ghaffar, dll.)" to 22,
+                    "Sifat Wajib, Jaiz, dan Mustahil bagi Allah dan Rasul" to 20,
+                    "Akhlak Terpuji kepada Orang Tua dan Guru" to 18,
+                    "Menghindari Sifat Tercela (Ananiah, Ghibah, Hasad)" to 16
+                )
+                isFaseC -> listOf(
+                    "Mengenal Sifat Allah Melalui Kalimat Tayyibah (Hamdallah, Hauqolah)" to 20,
+                    "Iman kepada Hari Kiamat & Tanda-tandanya" to 20,
+                    "Akhlak Terpuji: Amanah, Tawadhu', dan Disiplin" to 18,
+                    "Adab Bertamu & Menjenguk Orang Sakit" to 14
+                )
+                isFaseB -> listOf(
+                    "Mengenal Kalimat Tayyibah (Basmalah & Hamdallah)" to 20,
+                    "Iman kepada Allah & Malaikat-malaikat-Nya" to 20,
+                    "Akhlak Terpuji: Jujur, Rajin, dan Tanggung Jawab" to 18,
+                    "Adab Makan, Minum, dan Berpakaian Islami" to 14
+                )
+                isFaseA -> listOf(
+                    "Mengenal Huruf Hijaiyah & Basmalah" to 20,
+                    "Mengenal Allah SWT sebagai Pencipta" to 20,
+                    "Terbiasa Bersikap Jujur dan Sopan" to 16,
+                    "Adab Bangun Tidur & Mandi" to 14
+                )
+                else -> listOf(
+                    "Pengantar Akidah Akhlak" to 20,
+                    "Dasar Keimanan & Moral" to 20,
+                    "Penerapan Akhlak" to 18,
+                    "Evaluasi Karakter" to 14
+                )
+            }
+            "Fikih" -> when {
+                isFaseF -> listOf(
+                    "Jinayah: Ketentuan Hukum Pidana Islam (Qishash & Diyat)" to 22,
+                    "Qadha, Qadar, dan Tata Peradilan Islam" to 20,
+                    "Fikih Kontemporer: Transaksi Digital & Isu Medis Modern" to 18,
+                    "Siyasah Syar'iyyah & Fikih Kebangsaan dalam NKRI" to 16
+                )
+                isFaseE -> listOf(
+                    "Ketentuan Thaharah Lanjutan, Shalat Jamak, Qashar, & Jenazah" to 22,
+                    "Zakat, Infak, Sedekah, dan Pengelolaan Wakaf Produktif" to 20,
+                    "Hukum Muamalah Maliyah: Jual Beli, Khiyar, Riba, & Qiradh" to 18,
+                    "Hukum Keluarga Islam: Pernikahan, Hak Suami Istri, & Waris" to 16
+                )
+                isSmp -> listOf(
+                    "Ketentuan Shalat Fardhu Berjamaah & Sujud Sahwi/Tilawah/Syukur" to 22,
+                    "Thaharah: Haid, Nifas, dan Istihadhah" to 20,
+                    "Zakat Fitrah, Zakat Mal, dan Ketentuan Qurban/Aqiqah" to 18,
+                    "Puasa Wajib dan Sunnah" to 16
+                )
+                isFaseC -> listOf(
+                    "Ketentuan Shalat Berjamaah & Adzan/Iqamah" to 20,
+                    "Ketentuan Zakat Fitrah & Manfaatnya" to 20,
+                    "Puasa Ramadhan & Amalan Sunnahnya" to 18,
+                    "Ketentuan Hewan Qurban & Aqiqah" to 14
+                )
+                isFaseB -> listOf(
+                    "Ketentuan Wudhu & Tayamum Sederhana" to 20,
+                    "Shalat Fardhu 5 Waktu & Bacaannya" to 20,
+                    "Azan dan Iqamah" to 18,
+                    "Mengenal Ketentuan Puasa Wajib" to 14
+                )
+                isFaseA -> listOf(
+                    "Mengenal Rukun Islam" to 20,
+                    "Praktik Wudhu Sederhana" to 20,
+                    "Gerakan Shalat Dasar" to 16,
+                    "Mengenal Waktu Shalat Fardhu" to 14
+                )
+                else -> listOf(
+                    "Pengantar Fikih Ibadah" to 20,
+                    "Thaharah & Shalat" to 20,
+                    "Zakat & Puasa" to 18,
+                    "Praktik Ibadah" to 14
+                )
+            }
+            "Al-Qur'an Hadis" -> when {
+                isFaseF -> listOf(
+                    "Ayat Al-Qur'an tentang Sains, Teknologi, & Lingkungan Hidup" to 22,
+                    "Hadis tentang Pengembangan Ilmu Pengetahuan Modern" to 20,
+                    "Kajian Tematik tentang Toleransi & Kerukunan Beragama" to 18,
+                    "Proyek Pengamalan Living Qur'an & Hadis di Madrasah" to 16
+                )
+                isFaseE -> listOf(
+                    "Kaidah Tafsir & Kajian Ayat tentang Kehidupan Manusia" to 22,
+                    "Analisis Ayat Al-Qur'an tentang Etos Kerja & Tanggung Jawab" to 20,
+                    "Ulumul Hadis: Klasifikasi Hadis Shahih, Hasan, & Dhaif" to 18,
+                    "Kajian Hadis tentang Kepemimpinan & Keadilan Sosial" to 16
+                )
+                isSmp -> listOf(
+                    "Kajian Surat-surat Pendek Pilihan (Juz Amma) & Hukum Tajwid" to 22,
+                    "Hadis tentang Menuntut Ilmu & Keutamaan Belajar" to 20,
+                    "Kandungan Ayat Al-Qur'an tentang Infak & Sedekah" to 18,
+                    "Hadis tentang Persaudaraan & Kebersamaan" to 16
+                )
+                isFaseC -> listOf(
+                    "Membaca & Menghafal Surat Pendek Pilihan (Ad-Duha, Al-Insyirah)" to 20,
+                    "Hukum Tajwid Dasar (Idzgham, Ikhfa, Izhar, Iqlab)" to 20,
+                    "Hadis tentang Kebersihan dan Iman" to 18,
+                    "Kandungan Surat Al-Asr tentang Waktu" to 14
+                )
+                isFaseB -> listOf(
+                    "Membaca & Menghafal Surat Al-Fatihah dan An-Nas" to 20,
+                    "Mengenal Huruf Hijaiyah Berharakat (Fathah, Kasrah, Dammah)" to 20,
+                    "Hadis tentang Senyum dan Silaturahmi" to 18,
+                    "Mengenal Arti Surat Pendek" to 14
+                )
+                isFaseA -> listOf(
+                    "Mengenal Huruf Hijaiyah Tunggal" to 20,
+                    "Menghafal Surat Al-Fatihah" to 20,
+                    "Hadis tentang Kasih Sayang" to 16,
+                    "Mengenal Lafaz Basmalah dan Hamdallah" to 14
+                )
+                else -> listOf(
+                    "Pengenalan Al-Qur'an" to 20,
+                    "Hafalan Surat Pendek" to 20,
+                    "Hadis Pilihan" to 18,
+                    "Tajwid Dasar" to 14
+                )
+            }
+            "Sejarah Kebudayaan Islam (SKI)" -> when {
+                isFaseF -> listOf(
+                    "Kerajaan-kerajaan Islam di Nusantara (Samudera Pasai, Demak, dll.)" to 22,
+                    "Peran Wali Songo & Ulama Nusantara dalam Dakwah Islam" to 20,
+                    "Gerakan Pembaruan & Organisasi Islam di Indonesia" to 18,
+                    "Perkembangan Islam di Era Globalisasi & Kontemporer" to 16
+                )
+                isFaseE -> listOf(
+                    "Peradaban Islam Periode Makkah, Madinah, & Khulafaur Rasyidin" to 22,
+                    "Dinasti Umayyah di Damaskus & Cordoba: Pusat Peradaban Sains" to 20,
+                    "Dinasti Abbasiyah: Baitul Hikmah & Zaman Keemasan Islam" to 18,
+                    "Perkembangan Islam di Andalusia & Pengaruhnya bagi Eropa" to 16
+                )
+                isSmp -> listOf(
+                    "Sejarah Dakwah Nabi Muhammad SAW di Makkah & Madinah" to 22,
+                    "Kepemimpinan Khulafaur Rasyidin" to 20,
+                    "Peradaban Islam Masa Dinasti Umayyah" to 18,
+                    "Perkembangan Ilmu Pengetahuan Masa Dinasti Abbasiyah" to 16
+                )
+                isFaseC -> listOf(
+                    "Perjuangan Dakwah Nabi Muhammad SAW Periode Madinah" to 20,
+                    "Keteladanan Sahabat Utama (Abu Bakar & Umar bin Khattab)" to 20,
+                    "Peradaban Islam Masa Khulafaur Rasyidin" to 18,
+                    "Kisah Keteladanan Walisongo di Pulau Jawa" to 14
+                )
+                isFaseB -> listOf(
+                    "Kisah Kelahiran & Masa Kecil Nabi Muhammad SAW" to 20,
+                    "Peristiwa Penting Menjelang Kenabian" to 20,
+                    "Dakwah Nabi Muhammad SAW secara Sembunyi-sembunyi di Makkah" to 18,
+                    "Sikap Sabar Nabi dalam Menghadapi Tantangan" to 14
+                )
+                isFaseA -> listOf(
+                    "Mengenal Keluarga Nabi Muhammad SAW (Ayah, Ibu, Kakek)" to 20,
+                    "Kota Makkah Tempat Lahir Nabi" to 20,
+                    "Sifat Terpuji Nabi Muhammad SAW (Al-Amin)" to 16,
+                    "Kisah Singkat Kelahiran Nabi (Tahun Gajah)" to 14
+                )
+                else -> listOf(
+                    "Pengantar SKI" to 20,
+                    "Kisah Nabi" to 20,
+                    "Peradaban Islam" to 18,
+                    "Tokoh Islam" to 14
+                )
+            }
+            "Bahasa Arab" -> when {
+                isFaseF -> listOf(
+                    "Al-Sihhah, al-Ghidza', wal Ri'ayah al-Shihiyyah (Kesehatan & Gizi)" to 22,
+                    "Al-Safar, al-Siyahah, wal Istiqbal (Pariwisata & Perjalanan)" to 20,
+                    "Qawa'id Nahwu Lanjutan: Fi'il Madhi, Fa'il, Maf'ul Bih" to 18,
+                    "Insha' wa Muhadatsah: Karangan Bebas & Percakapan Aktif" to 16
+                )
+                isFaseE -> listOf(
+                    "Al-Ta'aruf, Al-Usrah, wal Hayah al-Yawmiyah (Perkenalan & Aktivitas)" to 22,
+                    "Al-Madrasah, al-Marofiq, wal Mawaddah al-Dirasiyah" to 20,
+                    "Qawa'id Nahwu Sharaf Dasar: Mubtada' Khabar & Fi'il Mudhari'" to 18,
+                    "Qira'ah wa Kitabah Teks Sederhana" to 16
+                )
+                isSmp -> listOf(
+                    "Al-Ta'aruf wa al-Adawat al-Madrasah (Perkenalan & Peralatan Sekolah)" to 22,
+                    "Al-Hayah al-Yawmiyah (Aktivitas Sehari-hari)" to 20,
+                    "Al-Bayt wa al-Usrah (Rumah & Keluarga)" to 18,
+                    "Al-Bait wa al-Ma'ishah (Lingkungan Sekitar)" to 16
+                )
+                isFaseC -> listOf(
+                    "Kosakata Anggota Tubuh & Panca Indera (Al-A'dha al-Jismiyah)" to 20,
+                    "Profesi & Pekerjaan di Sekitar Kita (Al-Mihnat)" to 20,
+                    "Peralatan di Sekolah & Kelas (Adawat al-Madrasah)" to 18,
+                    "Percakapan Sederhana (Hiwar) tentang Hobi" to 14
+                )
+                isFaseB -> listOf(
+                    "Perkenalan dalam Bahasa Arab (At-Ta'aruf)" to 20,
+                    "Nama-nama Anggota Keluarga (Al-Usrah)" to 20,
+                    "Peralatan Tulis (Al-Adawat al-Madrasiyah)" to 18,
+                    "Angka Arab 1 sampai 50 (Al-A'dad)" to 14
+                )
+                isFaseA -> listOf(
+                    "Mengenal Angka Arab 1 sampai 10" to 20,
+                    "Salam dan Ungkapan Sopan Santun (Tahiyyah)" to 20,
+                    "Kosakata Benda di Kelas" to 16,
+                    "Menulis Huruf Hijaiyah Sambung Dasar" to 14
+                )
+                else -> listOf(
+                    "Kosakata Dasar" to 20,
+                    "Percakapan Sederhana" to 20,
+                    "Qawa'id Dasar" to 18,
+                    "Qira'ah" to 14
+                )
+            }
             "Informatika" -> when {
                 isSmaSmk -> listOf(
                     "Berpikir Komputasional Tingkat Lanjut & Struktur Data" to 20,
@@ -162,16 +403,24 @@ object AdvancedCurriculumEngine {
                 )
             }
             else -> listOf(
-                "Konsep Dasar & Pengantar $subject ($fase)" to 20,
+                "Konsep Dasar & Pengantar $subject (${if(isMadrasah) "Madrasah" else fase})" to 20,
                 "Eksplorasi Kontekstual & Analisis $subject" to 20,
                 "Penerapan & Studi Kasus Dunia Nyata" to 18,
                 "Projek Kolaboratif & Evaluasi Akhir" to 14
             )
         }
+        
+        // ... (Return logic is long, I will keep it as is, just updating ProtaDocument creation)
 
         val topicsGenap = when (subject) {
             "Matematika" -> when {
-                isSmaSmk -> listOf(
+                isFaseF -> listOf(
+                    "Suku Banyak (Polinomial) & Teorema Sisa" to 20,
+                    "Matriks & Determinan Lanjutan" to 18,
+                    "Program Linear Lanjutan & Optimasi" to 18,
+                    "Limit Fungsi & Kontinuitas" to 14
+                )
+                isFaseE -> listOf(
                     "Vektor dan Operasi Aljabar Vektor" to 20,
                     "Statistika Inferensial (Pemusatan & Penyebaran Data)" to 18,
                     "Peluang Kejadian Majemuk" to 18,
@@ -209,7 +458,13 @@ object AdvancedCurriculumEngine {
                 )
             }
             "IPAS", "Fisika", "Kimia", "Biologi" -> when {
-                isSmaSmk -> listOf(
+                isFaseF -> listOf(
+                    "Induksi Elektromagnetik & Teknologi Terapan" to 20,
+                    "Spektroskopi & Struktur Molekul Modern" to 18,
+                    "Bioteknologi & Rekayasa Genetika" to 18,
+                    "Imunologi & Sistem Regulasi Tubuh Manusia" to 14
+                )
+                isFaseE -> listOf(
                     "Dinamika Gerak (Hukum Newton & Analisis Vektor Gaya)" to 20,
                     "Usaha, Energi, dan Momentum" to 18,
                     "Termodinamika & Teori Kinetik Gas" to 18,
@@ -247,7 +502,13 @@ object AdvancedCurriculumEngine {
                 )
             }
             "Bahasa Indonesia" -> when {
-                isSmaSmk -> listOf(
+                isFaseF -> listOf(
+                    "Penyusunan Proposal Penelitian & Karya Tulis Ilmiah" to 20,
+                    "Analisis Ragam Bahasa Jurnalistik & Media" to 18,
+                    "Resensi Buku Kritis Fiksi & Nonfiksi" to 18,
+                    "Keterampilan Berbicara & Retorika Publik" to 16
+                )
+                isFaseE -> listOf(
                     "Menulis Novel dan Apresiasi Sastra Indonesia" to 20,
                     "Karya Ilmiah Remaja & Artikel Jurnal" to 18,
                     "Resensi Buku Fiksi dan Non-Fiksi secara Kritis" to 18,
@@ -290,6 +551,226 @@ object AdvancedCurriculumEngine {
                 "Gotong Royong dalam Keberagaman Budaya Nusantara" to 18,
                 "Menjaga Keutuhan NKRI & Ketertiban Sosial" to 18
             )
+            "Akidah Akhlak" -> when {
+                isFaseF -> listOf(
+                    "Dialektika Pemikiran Kalam Klasik & Kontemporer" to 22,
+                    "Etika Bisnis Islam & Profesionalisme Kerja" to 20,
+                    "Peran Tokoh Pembaharu Islam dalam Membangun Peradaban" to 18,
+                    "Proyek Penguatan Profil Pelajar Pancasila Rahmatan Lil 'Alamin" to 16
+                )
+                isFaseE -> listOf(
+                    "Menghindari Perilaku Menyimpang & Dosa Besar dalam Islam" to 22,
+                    "Tasawuf & Penyucian Jiwa (Tazkiyatun Nafs) Karakter Islami" to 20,
+                    "Moderasi Beragama & Toleransi dalam Perspektif Akidah" to 18,
+                    "Evaluasi Karakter Akhlakul Karimah & Proyek Karakter" to 16
+                )
+                isSmp -> listOf(
+                    "Iman kepada Qadha dan Qadar" to 22,
+                    "Adab Membaca Al-Qur'an dan Berdoa" to 20,
+                    "Kisah Teladan Sahabat Nabi (Khulafaur Rasyidin)" to 18,
+                    "Menghindari Pergaulan Bebas dan Narkoba dalam Islam" to 16
+                )
+                isFaseC -> listOf(
+                    "Mengenal Asmaul Husna (Al-Ghaffar, Al-'Afuw, Al-Wahid)" to 20,
+                    "Iman kepada Qadha dan Qadar dalam Kehidupan Sehari-hari" to 20,
+                    "Menghindari Sifat Pemarah, Iri, dan Dengki" to 18,
+                    "Kisah Teladan Nabi dan Sahabat Pilihan" to 14
+                )
+                isFaseB -> listOf(
+                    "Mengenal Asmaul Husna (Ar-Rahman, Ar-Rahim, Al-Malik)" to 20,
+                    "Iman kepada Kitab-kitab Allah & Nabi/Rasul" to 20,
+                    "Menghindari Sifat Bohong dan Sombong" to 18,
+                    "Adab Belajar dan Keluar Rumah" to 14
+                )
+                isFaseA -> listOf(
+                    "Mengenal Syahadatain" to 20,
+                    "Mengenal Ciptaan Allah di Sekitar Kita" to 20,
+                    "Berbakti kepada Orang Tua dan Kasih Sayang Sesama" to 16,
+                    "Adab Masuk dan Keluar Kamar Mandi" to 14
+                )
+                else -> listOf(
+                    "Lanjutan Akidah Akhlak" to 20,
+                    "Pembinaan Karakter" to 20,
+                    "Akhlak Sosial" to 18,
+                    "Evaluasi" to 14
+                )
+            }
+            "Fikih" -> when {
+                isFaseF -> listOf(
+                    "Mawaris: Ilmu Waris & Pembagian Harta Pusaka" to 22,
+                    "Qawaid Fiqhiyyah Asasiyah (Kaidah Fikih Utama)" to 20,
+                    "Hubungan Antarumat Beragama dalam Perspektif Fikih Siyasah" to 18,
+                    "Studi Kasus Fatwa MUI & Bahtsul Masail Kontemporer" to 16
+                )
+                isFaseE -> listOf(
+                    "Jinayah: Ketentuan Hukum Pidana Islam (Qishash & Diyat)" to 22,
+                    "Qadha, Qadar, dan Tata Peradilan Islam" to 20,
+                    "Fikih Kontemporer: Transaksi Digital & Isu Medis Modern" to 18,
+                    "Siyasah Syar'iyyah & Fikih Kebangsaan dalam NKRI" to 16
+                )
+                isSmp -> listOf(
+                    "Ketentuan Shalat Jum'at dan Shalat Sunnah Rawatib" to 22,
+                    "Makanan dan Minuman yang Halal serta Haram" to 20,
+                    "Ketentuan Jenazah (Memandikan, Mengkafani, Menshalatkan, Menguburkan)" to 18,
+                    "Haji dan Umrah" to 16
+                )
+                isFaseC -> listOf(
+                    "Ketentuan Shalat Sunnah Rawatib & Dhuha" to 20,
+                    "Makanan dan Minuman yang Halal & Haram" to 20,
+                    "Ketentuan Memandikan dan Menshalatkan Jenazah Sederhana" to 18,
+                    "Perjalanan Ibadah Haji Sederhana" to 14
+                )
+                isFaseB -> listOf(
+                    "Ketentuan Shalat Jumat & Shalat Jama' Sederhana" to 20,
+                    "Mengenal Zakat Fitrah & Infak" to 20,
+                    "Mengenal Makanan Halal & Haram" to 18,
+                    "Berdoa dan Berzikir Setelah Shalat" to 14
+                )
+                isFaseA -> listOf(
+                    "Bacaan Shalat Pendek" to 20,
+                    "Adab Berpakaian dan Kebersihan Badan" to 20,
+                    "Mengenal Lafaz Azan" to 16,
+                    "Doa Sehari-hari Sebelum dan Sesudah Beramal" to 14
+                )
+                else -> listOf(
+                    "Lanjutan Fikih Ibadah" to 20,
+                    "Muamalah Dasar" to 20,
+                    "Hukum Islam" to 18,
+                    "Praktik" to 14
+                )
+            }
+            "Al-Qur'an Hadis" -> when {
+                isFaseF -> listOf(
+                    "Ayat tentang Etos Kerja, Inovasi, & Kewirausahaan" to 22,
+                    "Hadis tentang Kepemimpinan Umat & Keadilan Sosial" to 20,
+                    "Metodologi Penelitian Ayat Tematik (Maudhu'i)" to 18,
+                    "Kajian Kontemporer Teks Hadis Hukum" to 16
+                )
+                isFaseE -> listOf(
+                    "Ayat Al-Qur'an tentang Sains, Teknologi, & Lingkungan Hidup" to 22,
+                    "Hadis tentang Pengembangan Ilmu Pengetahuan Modern" to 20,
+                    "Kajian Tematik tentang Toleransi & Kerukunan Beragama" to 18,
+                    "Proyek Pengamalan Living Qur'an & Hadis di Madrasah" to 16
+                )
+                isSmp -> listOf(
+                    "Kandungan Ayat Al-Qur'an tentang Sabar dan Ujian Hidup" to 22,
+                    "Hadis tentang Menjaga Kelestarian Lingkungan" to 20,
+                    "Kajian Ayat tentang Kejujuran & Amanah" to 18,
+                    "Hadis tentang Larangan Berbuat Dosa & Kemaksiatan" to 16
+                )
+                isFaseC -> listOf(
+                    "Menghafal Surat Al-Qadr & Al-Bayyinah" to 20,
+                    "Penerapan Tajwid dalam Bacaan Harian" to 20,
+                    "Hadis tentang Menyayangi Anak Yatim" to 18,
+                    "Kandungan Surat Al-Ma'un tentang Kepedulian Sosial" to 14
+                )
+                isFaseB -> listOf(
+                    "Menghafal Surat Al-Falaq dan Al-Ikhlas" to 20,
+                    "Mengenal Tanda Baca Sukun dan Tasydid" to 20,
+                    "Hadis tentang Niat dan Kebersihan" to 18,
+                    "Mengenal Kisah di Balik Surat Pendek" to 14
+                )
+                isFaseA -> listOf(
+                    "Menghafal Surat An-Nas" to 20,
+                    "Mengenal Angka Arab Dasar" to 20,
+                    "Hadis tentang Kebersihan Sebagian dari Iman" to 16,
+                    "Mengenal Nama-nama Nabi" to 14
+                )
+                else -> listOf(
+                    "Lanjutan Al-Qur'an" to 20,
+                    "Hafalan Juz Amma" to 20,
+                    "Hadis Pilihan" to 18,
+                    "Penerapan" to 14
+                )
+            }
+            "Sejarah Kebudayaan Islam (SKI)" -> when {
+                isFaseF -> listOf(
+                    "Peran Tokoh Muslim Internasional dalam Saintek Modern" to 22,
+                    "Dinamika Hubungan Islam dan Negara di Dunia Modern" to 20,
+                    "Kontribusi Ormas Islam dalam Kemerdekaan & Pembangunan NKRI" to 18,
+                    "Studi Tokoh Ulama Nusantara Abad XX" to 16
+                )
+                isFaseE -> listOf(
+                    "Kerajaan-kerajaan Islam di Nusantara (Samudera Pasai, Demak, dll.)" to 22,
+                    "Peran Wali Songo & Ulama Nusantara dalam Dakwah Islam" to 20,
+                    "Gerakan Pembaruan & Organisasi Islam di Indonesia" to 18,
+                    "Perkembangan Islam di Era Globalisasi & Kontemporer" to 16
+                )
+                isSmp -> listOf(
+                    "Sejarah Masuk dan Berkembangnya Islam di Nusantara" to 22,
+                    "Peranan Wali Songo dalam Penyebaran Islam di Jawa" to 20,
+                    "Kerajaan Islam Pertama di Indonesia" to 18,
+                    "Tokoh-tokoh Pejuang Muslim Nusantara" to 16
+                )
+                isFaseC -> listOf(
+                    "Masuknya Islam ke Nusantara melalui Perdagangan & Dakwah" to 20,
+                    "Kerajaan Islam di Nusantara (Samudera Pasai & Malaka)" to 20,
+                    "Tokoh Ulama Penyebar Islam di Indonesia" to 18,
+                    "Peninggalan Bersejarah Islam di Indonesia" to 14
+                )
+                isFaseB -> listOf(
+                    "Dakwah Terang-terangan Nabi Muhammad SAW di Makkah" to 20,
+                    "Peristiwa Isra' Mi'raj Nabi Muhammad SAW" to 20,
+                    "Hijrah Nabi Muhammad SAW ke Madinah" to 18,
+                    "Masyarakat Madinah sebelum dan sesudah Kedatangan Nabi" to 14
+                )
+                isFaseA -> listOf(
+                    "Mengenal Tempat-tempat Bersejarah Islam (Ka'bah & Masjid Nabawi)" to 20,
+                    "Kisah Sahabat Kecil Nabi" to 20,
+                    "Kebiasaan Baik Nabi Muhammad SAW dalam Keseharian" to 16,
+                    "Kisah Hewan dalam Al-Qur'an (Gajah, Semut, Lebah)" to 14
+                )
+                else -> listOf(
+                    "Lanjutan SKI" to 20,
+                    "Sejarah Nusantara" to 20,
+                    "Tokoh Islam" to 18,
+                    "Peradaban" to 14
+                )
+            }
+            "Bahasa Arab" -> when {
+                isFaseF -> listOf(
+                    "Al-Tijarah wal Iqtishad al-Islami (Perdagangan & Ekonomi Islam)" to 22,
+                    "Al-Taqniyah wal Ma'lumat (Teknologi & Informasi)" to 20,
+                    "Qawa'id Sharaf Lanjutan (Fi'il Amar, Nahy, Isim Alat)" to 18,
+                    "Munazharah wa Kitabah Maqalah 'Ilmiyyah (Debat & Penulisan Artikel Arab)" to 16
+                )
+                isFaseE -> listOf(
+                    "Al-Sihhah, al-Ghidza', wal Ri'ayah al-Shihiyyah (Kesehatan & Gizi)" to 22,
+                    "Al-Safar, al-Siyahah, wal Istiqbal (Pariwisata & Perjalanan)" to 20,
+                    "Qawa'id Nahwu Lanjutan: Fi'il Madhi, Fa'il, Maf'ul Bih" to 18,
+                    "Insha' wa Muhadatsah: Karangan Bebas & Percakapan Aktif" to 16
+                )
+                isSmp -> listOf(
+                    "Al-Marafiq al-Ammah (Fasilitas Umum)" to 22,
+                    "Al-Mihnah (Profesi & Pekerjaan)" to 20,
+                    "Al-Ri'ayah al-Shihiyyah (Kesehatan)" to 16,
+                    "Qawa'id Mubtada' Khabar & Na'at Man'ut" to 16
+                )
+                isFaseC -> listOf(
+                    "Nama-nama Buah, Sayur, dan Makanan (Al-Fawakiw wa al-Khudar)" to 20,
+                    "Transportasi & Perjalanan (Al-Muwasalat)" to 20,
+                    "Jam dan Waktu dalam Bahasa Arab (Al-Sa'ah)" to 18,
+                    "Membaca & Menulis Teks Arab Sederhana" to 14
+                )
+                isFaseB -> listOf(
+                    "Nama-nama Hewan dalam Bahasa Arab (Al-Hayawanat)" to 20,
+                    "Warna-warna dalam Bahasa Arab (Al-Alwan)" to 20,
+                    "Anggota Tubuh Manusia (A'dha al-Insan)" to 18,
+                    "Percakapan Singkat Sehari-hari" to 14
+                )
+                isFaseA -> listOf(
+                    "Mengenal Nama-nama Hari dalam Bahasa Arab" to 20,
+                    "Kosakata Buah-buahan Dasar" to 20,
+                    "Ungkapan Terima kasih & Maaf" to 16,
+                    "Menghafal Lagu/Kosakata Arab Riang" to 14
+                )
+                else -> listOf(
+                    "Lanjutan Bahasa Arab" to 20,
+                    "Hiwar Lanjutan" to 20,
+                    "Nahwu Dasar" to 18,
+                    "Qira'ah" to 14
+                )
+            }
             "Informatika" -> when {
                 isSmaSmk -> listOf(
                     "Jaringan Komputer Lanjut & Protokol Keamanan" to 20,
@@ -363,13 +844,14 @@ object AdvancedCurriculumEngine {
         fase: String,
         grade: String,
         semester: String,
-        academicYear: String
+        academicYear: String,
+        isMadrasah: Boolean = false
     ): PromesDocument {
         val isGanjil = semester.contains("1") || semester.lowercase().contains("ganjil")
         val months = if (isGanjil) listOf("Juli", "Agustus", "September", "Oktober", "November", "Desember")
         else listOf("Januari", "Februari", "Maret", "April", "Mei", "Juni")
 
-        val prota = generateProta(subject, fase, grade, academicYear)
+        val prota = generateProta(subject, fase, grade, academicYear, isMadrasah)
         val filteredProta = prota.items.filter {
             if (isGanjil) it.semester.contains("Ganjil") else it.semester.contains("Genap")
         }
@@ -399,7 +881,7 @@ object AdvancedCurriculumEngine {
         val totalJp = promesItems.sumOf { it.alokasiJp }
 
         return PromesDocument(
-            title = "Program Semester (PROMES) - $subject (${if (isGanjil) "Semester 1" else "Semester 2"})",
+            title = "Program Semester (PROMES) ${if(isMadrasah) "(Madrasah) " else ""}- $subject (${if (isGanjil) "Semester 1" else "Semester 2"})",
             subject = subject,
             fase = fase,
             grade = grade,
@@ -413,9 +895,10 @@ object AdvancedCurriculumEngine {
     fun generateAtp(
         subject: String,
         fase: String,
-        grade: String
+        grade: String,
+        isMadrasah: Boolean = false
     ): AtpDocument {
-        android.util.Log.d("CurriculumEngine", "generateAtp: subject=$subject, fase=$fase, grade=$grade")
+        android.util.Log.d("CurriculumEngine", "generateAtp: subject=$subject, fase=$fase, grade=$grade, isMadrasah=$isMadrasah")
         
         val steps = mutableListOf<AtpStepItem>()
         val isFaseA = fase == "Fase A"
@@ -612,10 +1095,12 @@ object AdvancedCurriculumEngine {
             }
         }
 
-        val p3Tags = listOf("Bernalar Kritis, Mandiri", "Gotong Royong, Kreatif", "Bernalar Kritis, Kreatif", "Mandiri, Berakhlak Mulia")
+        val p3TagsBase = listOf("Bernalar Kritis, Mandiri", "Gotong Royong, Kreatif", "Bernalar Kritis, Kreatif", "Mandiri, Berakhlak Mulia")
+        val ppraTagsBase = listOf("Berkeadaban (Ta'addub)", "Keteladanan (Qudwah)", "Mengambil Jalan Tengah (Tawassuth)", "Berimbang (Tawazun)")
 
         rawData.forEachIndexed { idx, item ->
-            val p3 = p3Tags[idx % p3Tags.size]
+            val p3 = p3TagsBase[idx % p3TagsBase.size]
+            val ppra = if (isMadrasah) " | PPRA: ${ppraTagsBase[idx % ppraTagsBase.size]}" else ""
             val kode = "${fase.replace("Fase ", "")}.${idx + 1}"
             steps.add(
                 AtpStepItem(
@@ -625,20 +1110,20 @@ object AdvancedCurriculumEngine {
                     tujuanPembelajaran = "$kode. ${item.second}",
                     materiPokok = item.second.split(" ").take(4).joinToString(" "),
                     alokasiJp = item.third,
-                    profilPancasila = p3,
+                    profilPancasila = p3 + ppra,
                     indikatorKetercapaian = "Peserta didik dapat membuktikan penguasaan konsep melalui asesmen unjuk kerja dan tes tertulis HOTS secara mandiri."
                 )
             )
         }
 
         return AtpDocument(
-            title = "Alur Tujuan Pembelajaran (ATP) - $subject $fase",
+            title = "Alur Tujuan Pembelajaran (ATP) - $subject $fase ${if(isMadrasah) "(Madrasah)" else ""}",
             subject = subject,
             fase = fase,
             grade = grade,
             totalJp = steps.sumOf { it.alokasiJp },
             rasional = "Penyusunan Alur Tujuan Pembelajaran (ATP) $subject ini disusun secara linear dan hierarkis berdasarkan tingkat kesulitan dan kebutuhan prasyarat kognitif peserta didik, memastikan pembelajaran bermakna (meaningful learning) dan berkesinambungan.",
-            karakteristikMataPelajaran = "Mata pelajaran $subject membekali peserta didik dengan kecakapan literasi, numerasi, nalar kritis, dan kemampuan pemecahan masalah (problem solving) berlandaskan nilai-nilai Profil Pelajar Pancasila.",
+            karakteristikMataPelajaran = "Mata pelajaran $subject membekali peserta didik dengan kecakapan literasi, numerasi, nalar kritis, dan kemampuan pemecahan masalah (problem solving) berlandaskan nilai-nilai Profil Pelajar Pancasila ${if(isMadrasah) "dan Profil Pelajar Rahmatan Lil 'Alamin" else ""}.",
             alurTujuanList = steps
         )
     }

@@ -50,28 +50,31 @@ fun AtpScreen(
     var selectedSubject by remember { mutableStateOf("IPAS") }
     var selectedFase by remember { mutableStateOf(Fase.FASE_B) }
     var selectedGrade by remember { mutableStateOf("Kelas 4") }
+    var isMadrasah by remember { mutableStateOf(false) }
 
     var atpDoc by remember {
         mutableStateOf(
             AdvancedCurriculumEngine.generateAtp(
                 selectedSubject,
                 selectedFase.code,
-                selectedGrade
+                selectedGrade,
+                isMadrasah
             )
         )
     }
 
     fun recalculate() {
-        android.util.Log.d("AtpScreen", "recalculate called: sub=$selectedSubject, fase=${selectedFase.code}, grade=$selectedGrade")
+        android.util.Log.d("AtpScreen", "recalculate called: sub=$selectedSubject, fase=${selectedFase.code}, grade=$selectedGrade, isMadrasah=$isMadrasah")
         atpDoc = AdvancedCurriculumEngine.generateAtp(
             selectedSubject,
             selectedFase.code,
-            selectedGrade
+            selectedGrade,
+            isMadrasah
         )
         android.util.Log.d("AtpScreen", "recalculate done: totalJp=${atpDoc.totalJp}, listSize=${atpDoc.alurTujuanList.size}")
     }
 
-    LaunchedEffect(selectedSubject, selectedFase.code, selectedGrade) {
+    LaunchedEffect(selectedSubject, selectedFase.code, selectedGrade, isMadrasah) {
         recalculate()
     }
 
@@ -159,7 +162,7 @@ fun AtpScreen(
                 Box(modifier = Modifier.heightIn(max = 350.dp).fillMaxWidth()) {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         val jenjang = com.example.data.model.CurriculumConstants.getJenjangByFase(selectedFase.code)
-                        val filteredMapel = com.example.data.model.CurriculumConstants.MATA_PELAJARAN_MAP[jenjang] ?: emptyList()
+                        val filteredMapel = com.example.data.model.CurriculumConstants.getSubjects(jenjang, isMadrasah)
                         
                         items(filteredMapel) { mapel ->
                             TextButton(
@@ -343,6 +346,13 @@ fun AtpScreen(
                                     Icon(Icons.Default.ArrowDropDown, contentDescription = null)
                                 }
                             }
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(checked = isMadrasah, onCheckedChange = { isMadrasah = it })
+                            Text("Konteks Madrasah")
                         }
 
                         Row(

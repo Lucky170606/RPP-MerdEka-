@@ -129,6 +129,7 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
     val wizardGayaBelajar = MutableStateFlow<List<String>>(listOf("Visual", "Auditori", "Kinestetik"))
     val wizardKesiapan = MutableStateFlow<List<String>>(listOf("Perlu Bimbingan", "Berkembang", "Mahir"))
     val wizardAdditionalNotes = MutableStateFlow("")
+    val wizardRefleksi = MutableStateFlow("")
     val wizardGenerationMode = MutableStateFlow(GenerationMode.GEMINI_AI)
 
     val generationState = MutableStateFlow<GenerationState>(GenerationState.Idle)
@@ -185,7 +186,8 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
                         selectedDimensi = listOf("Bernalar Kritis", "Bergotong Royong", "Mandiri"),
                         targetGayaBelajar = listOf("Visual", "Kinestetik"),
                         targetKesiapan = listOf("Perlu Bimbingan", "Berkembang", "Mahir"),
-                        additionalNotes = "Gunakan media manipulatif kertas lipat dan gambar kue martabak"
+                        additionalNotes = "Gunakan media manipulatif kertas lipat dan gambar kue martabak",
+                        refleksi = ""
                     )
 
                     val sample1 = ModulAjarEntity(
@@ -236,7 +238,8 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
                         selectedDimensi = listOf("Beriman & Berakhlak Mulia", "Kreatif", "Bergotong Royong"),
                         targetGayaBelajar = listOf("Visual", "Auditori", "Kinestetik"),
                         targetKesiapan = listOf("Perlu Bimbingan", "Berkembang", "Mahir"),
-                        additionalNotes = "Eksplorasi tanaman di kebun sekolah"
+                        additionalNotes = "Eksplorasi tanaman di kebun sekolah",
+                        refleksi = ""
                     )
 
                     val sample2 = ModulAjarEntity(
@@ -420,7 +423,8 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
                     selectedPpra = wizardSelectedPpra.value,
                     targetGayaBelajar = wizardGayaBelajar.value,
                     targetKesiapan = wizardKesiapan.value,
-                    additionalNotes = wizardAdditionalNotes.value
+                    additionalNotes = wizardAdditionalNotes.value,
+                    refleksi = wizardRefleksi.value
                 )
                 Result.success(offlineResult)
             } else {
@@ -441,7 +445,8 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
                     selectedPpra = wizardSelectedPpra.value,
                     targetGayaBelajar = wizardGayaBelajar.value,
                     targetKesiapan = wizardKesiapan.value,
-                    additionalNotes = wizardAdditionalNotes.value
+                    additionalNotes = wizardAdditionalNotes.value,
+                    refleksi = wizardRefleksi.value
                 )
             }
 
@@ -467,7 +472,7 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
                     targetPesertaDidik = content.targetPesertaDidik,
                     kegiatanPendahuluan = content.kegiatanPendahuluan,
                     kegiatanInti = content.kegiatanInti,
-                    kegiatanPenutup = content.kegiatanPenutup,
+                    kegiatanPenutup = content.kegiatanPenutup + "\n\n--- REFLEKSI ---\n" + content.refleksi + "\n\n--- GLOSARIUM ---\n" + content.glosarium + "\n\n--- DAFTAR PUSTAKA ---\n" + content.daftarPustaka,
                     diferensiasiKonten = content.diferensiasiKonten,
                     diferensiasiProses = content.diferensiasiProses,
                     diferensiasiProduk = content.diferensiasiProduk,

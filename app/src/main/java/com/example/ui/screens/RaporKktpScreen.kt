@@ -19,10 +19,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.ai.AdvancedCurriculumEngine
+import com.example.data.ai.GeminiService
 import com.example.data.model.KurikulumMerdekaReferenceData
 import com.example.data.model.StudentRaporEntry
 import com.example.ui.theme.*
 import com.example.util.DocumentExporter
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +35,7 @@ fun RaporKktpScreen(
 
     var selectedSubject by remember { mutableStateOf("Matematika") }
     var selectedGrade by remember { mutableStateOf("Kelas 4 SD") }
+    var isMadrasah by remember { mutableStateOf(false) }
 
     val intervals = remember { AdvancedCurriculumEngine.DEFAULT_KKTP_INTERVALS }
 
@@ -92,6 +95,9 @@ fun RaporKktpScreen(
     var newStudentScore by remember { mutableStateOf("80") }
     var newMateriTinggi by remember { mutableStateOf("pemahaman konsep inti") }
     var newMateriRendah by remember { mutableStateOf("penerapan studi kasus lanjutan") }
+    var aiGeneratedDescription by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+    var isGeneratingDescription by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -235,13 +241,18 @@ fun RaporKktpScreen(
                                 }
                             }
 
-                            OutlinedTextField(
-                                value = selectedGrade,
-                                onValueChange = { selectedGrade = it },
-                                label = { Text("Kelas") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true
-                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                OutlinedTextField(
+                                    value = selectedGrade,
+                                    onValueChange = { selectedGrade = it },
+                                    label = { Text("Kelas") },
+                                    singleLine = true
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Checkbox(checked = isMadrasah, onCheckedChange = { isMadrasah = it })
+                                    Text("Konteks Madrasah", fontSize = 12.sp)
+                                }
+                            }
                         }
                     }
                 }
@@ -456,18 +467,46 @@ fun RaporKktpScreen(
                         label = { Text("Materi Perlu Bimbingan") },
                         modifier = Modifier.fillMaxWidth()
                     )
+                    
+                    // Add AI generation button
+                    TextButton(
+                        onClick = {
+                            isGeneratingDescription = true
+                            scope.launch {
+                                val result = GeminiService.generateRaporNarrative(
+                                    context, newStudentName, newStudentScore.toIntOrNull() ?: 75, newMateriTinggi, newMateriRendah, isMadrasah
+                                )
+                                result.onSuccess {
+                                    aiGeneratedDescription = it
+                                }
+                                isGeneratingDescription = false
+                            }
+                        },
+                        enabled = !isGeneratingDescription
+                    ) {
+                        if (isGeneratingDescription) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                        } else {
+                            Text("Gunakan AI untuk Deskripsi Rapor")
+                        }
+                    }
+                    if (aiGeneratedDescription.isNotBlank()) {
+                        Text("Deskripsi AI: $aiGeneratedDescription", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                    }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
                         val score = newStudentScore.toIntOrNull() ?: 75
-                        val desc = AdvancedCurriculumEngine.generateRaporSentence(
-                            newStudentName,
-                            score,
-                            newMateriTinggi,
-                            newMateriRendah
-                        )
+                        val desc = aiGeneratedDescription.ifBlank {
+                            AdvancedCurriculumEngine.generateRaporSentence(
+                                newStudentName,
+                                score,
+                                newMateriTinggi,
+                                newMateriRendah
+                            )
+                        }
                         studentList = studentList + StudentRaporEntry(
                             namaSiswa = newStudentName.ifBlank { "Siswa Baru" },
                             nilaiAkhir = score,
@@ -476,6 +515,7 @@ fun RaporKktpScreen(
                             deskripsiCapaian = desc
                         )
                         newStudentName = ""
+                        aiGeneratedDescription = ""
                         showAddDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(

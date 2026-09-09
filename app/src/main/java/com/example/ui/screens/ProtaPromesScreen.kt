@@ -63,6 +63,7 @@ fun ProtaPromesScreen(
     var selectedGrade by remember { mutableStateOf("Kelas 4") }
     var academicYear by remember { mutableStateOf(profile.defaultAcademicYear.ifBlank { "2024/2025" }) }
     var selectedSemester by remember { mutableStateOf("Semester 1 (Ganjil)") }
+    var isMadrasah by remember { mutableStateOf(false) }
 
     var protaDoc by remember {
         mutableStateOf(
@@ -70,7 +71,8 @@ fun ProtaPromesScreen(
                 selectedSubject,
                 selectedFase.code,
                 selectedGrade,
-                academicYear
+                academicYear,
+                isMadrasah
             )
         )
     }
@@ -82,7 +84,8 @@ fun ProtaPromesScreen(
                 selectedFase.code,
                 selectedGrade,
                 selectedSemester,
-                academicYear
+                academicYear,
+                isMadrasah
             )
         )
     }
@@ -92,18 +95,20 @@ fun ProtaPromesScreen(
             selectedSubject,
             selectedFase.code,
             selectedGrade,
-            academicYear
+            academicYear,
+            isMadrasah
         )
         promesDoc = AdvancedCurriculumEngine.generatePromes(
             selectedSubject,
             selectedFase.code,
             selectedGrade,
             selectedSemester,
-            academicYear
+            academicYear,
+            isMadrasah
         )
     }
 
-    LaunchedEffect(selectedSubject, selectedFase.code, selectedGrade, academicYear, selectedSemester) {
+    LaunchedEffect(selectedSubject, selectedFase.code, selectedGrade, academicYear, selectedSemester, isMadrasah) {
         recalculate()
     }
 
@@ -204,7 +209,7 @@ fun ProtaPromesScreen(
                 Box(modifier = Modifier.heightIn(max = 350.dp).fillMaxWidth()) {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         val jenjang = com.example.data.model.CurriculumConstants.getJenjangByFase(selectedFase.code)
-                        val filteredMapel = com.example.data.model.CurriculumConstants.MATA_PELAJARAN_MAP[jenjang] ?: emptyList()
+                        val filteredMapel = com.example.data.model.CurriculumConstants.getSubjects(jenjang, isMadrasah)
                         
                         items(filteredMapel) { mapel ->
                             TextButton(
@@ -455,6 +460,13 @@ fun ProtaPromesScreen(
                                         Icon(Icons.Default.ArrowDropDown, contentDescription = null)
                                     }
                                 }
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(checked = isMadrasah, onCheckedChange = { isMadrasah = it })
+                                Text("Konteks Madrasah")
                             }
 
                             if (selectedTab == 1) {

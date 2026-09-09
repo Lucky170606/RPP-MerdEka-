@@ -299,7 +299,8 @@ object GeminiService {
         selectedPpra: List<String> = emptyList(),
         targetGayaBelajar: List<String>,
         targetKesiapan: List<String>,
-        additionalNotes: String
+        additionalNotes: String,
+        refleksi: String
     ): Result<GeneratedModulContent> = withContext(Dispatchers.IO) {
         val apiKey = ApiKeyManager.getApiKey(context)
         val isMadrasah = KurikulumMerdekaReferenceData.isMadrasahSubject(subject) || schoolName.contains("MI", ignoreCase = true) || schoolName.contains("MTs", ignoreCase = true) || schoolName.contains("MA", ignoreCase = true) || schoolName.contains("Madrasah", ignoreCase = true) || selectedPpra.isNotEmpty()
@@ -352,7 +353,10 @@ object GeminiService {
               "asesmenSumatif": "String tes tertulis / proyek sumatif",
               "rubrikPenilaian": "String tabel rubrik penilaian berjenjang (Skala 1 s.d 4)",
               "remedialDanPengayaan": "String strategi remedial dan program pengayaan",
-              "lkpdDanMateri": "String draf Lembar Kerja Peserta Didik (LKPD) yang dapat dikerjakan siswa"
+              "lkpdDanMateri": "String draf Lembar Kerja Peserta Didik (LKPD) yang dapat dikerjakan siswa",
+              "refleksi": "String pertanyaan refleksi spesifik untuk peserta didik dan pendidik",
+              "glosarium": "String daftar istilah penting terkait materi $topic",
+              "daftarPustaka": "String daftar referensi buku atau sumber belajar"
             }
         """.trimIndent()
 
@@ -361,7 +365,7 @@ object GeminiService {
             val offlineResult = OfflineCurriculumEngine.generateCompleteModul(
                 teacherName, schoolName, fase, grade, subject, topic, timeAllocation,
                 semester, academicYear, modelName, selectedDimensi, selectedPpra, targetGayaBelajar,
-                targetKesiapan, additionalNotes
+                targetKesiapan, additionalNotes, refleksi
             )
             return@withContext Result.success(offlineResult)
         }
@@ -373,7 +377,7 @@ object GeminiService {
                 val offlineResult = OfflineCurriculumEngine.generateCompleteModul(
                     teacherName, schoolName, fase, grade, subject, topic, timeAllocation,
                     semester, academicYear, modelName, selectedDimensi, selectedPpra, targetGayaBelajar,
-                    targetKesiapan, additionalNotes
+                    targetKesiapan, additionalNotes, refleksi
                 )
                 return@withContext Result.success(offlineResult)
             }
@@ -404,7 +408,10 @@ object GeminiService {
                 asesmenSumatif = modulJson.optString("asesmenSumatif", "Tes tertulis dan penilaian produk proyek."),
                 rubrikPenilaian = modulJson.optString("rubrikPenilaian", "Rubrik kriteria skala 1 sampai 4."),
                 remedialDanPengayaan = modulJson.optString("remedialDanPengayaan", "Remedial untuk yang belum tuntas, pengayaan materi HOTS."),
-                lkpdDanMateri = modulJson.optString("lkpdDanMateri", "Lembar Kerja Peserta Didik terkait $topic.")
+                lkpdDanMateri = modulJson.optString("lkpdDanMateri", "Lembar Kerja Peserta Didik terkait $topic."),
+                refleksi = modulJson.optString("refleksi", "Bagaimana perasaanmu setelah belajar $topic?"),
+                glosarium = modulJson.optString("glosarium", "Istilah terkait $topic..."),
+                daftarPustaka = modulJson.optString("daftarPustaka", "Buku Teks Kurikulum Merdeka.")
             )
 
             Result.success(generated)
@@ -413,7 +420,7 @@ object GeminiService {
             val offlineResult = OfflineCurriculumEngine.generateCompleteModul(
                 teacherName, schoolName, fase, grade, subject, topic, timeAllocation,
                 semester, academicYear, modelName, selectedDimensi, selectedPpra, targetGayaBelajar,
-                targetKesiapan, additionalNotes
+                targetKesiapan, additionalNotes, refleksi
             )
             Result.success(offlineResult)
         }
@@ -491,6 +498,64 @@ object GeminiService {
             Log.e(TAG, "Section AI refinement error", e)
             Result.success("$currentContent\n\n[Penyempurnaan]: Telah disesuaikan dengan instruksi: $instruction")
         }
+    }
+
+    suspend fun generateKktpRubric(
+        context: Context,
+        subject: String,
+        fase: String,
+        topic: String,
+        tpList: List<String>,
+        isMadrasah: Boolean = false
+    ): Result<String> {
+        val prompt = """
+            Anda adalah Pakar Asesmen Kurikulum Merdeka ${if (isMadrasah) "dan Madrasah (Kemenag)" else ""}.
+            Buatkan rubrik KKTP (Kriteria Ketercapaian Tujuan Pembelajaran) skala 1-4 untuk:
+            Mata Pelajaran: $subject ($fase)
+            Topik: $topic
+            Tujuan Pembelajaran: ${tpList.joinToString(", ")}
+            ${if (isMadrasah) "Pastikan rubrik mencakup nilai-nilai Profil Pelajar Rahmatan Lil 'Alamin (PPRA)." else ""}
+            
+            Berikan respons dalam bentuk tabel Markdown yang rapi.
+        """.trimIndent()
+        return executeWithRetryAndFallback(context, prompt, isJsonResponse = false, temperature = 0.5)
+    }
+
+    suspend fun generateRaporNarrative(
+        context: Context,
+        namaSiswa: String,
+        nilai: Int,
+        materiTinggi: String,
+        materiRendah: String,
+        isMadrasah: Boolean = false
+    ): Result<String> {
+        val prompt = """
+            Anda adalah Guru Profesional Kurikulum Merdeka ${if (isMadrasah) "di Madrasah (Kemenag)" else ""}.
+            Buatkan kalimat deskripsi naratif untuk e-Rapor siswa bernama $namaSiswa.
+            Nilai Akhir: $nilai
+            Materi yang sudah dikuasai dengan baik: $materiTinggi
+            Materi yang perlu perbaikan/bimbingan: $materiRendah
+            
+            Buatkan kalimat yang profesional, memotivasi, dan sesuai kaidah rapor Kurikulum Merdeka ${if (isMadrasah) "serta integrasikan nilai moderasi beragama jika relevan" else ""}.
+            Balas HANYA dengan kalimat deskripsi saja.
+        """.trimIndent()
+        return executeWithRetryAndFallback(context, prompt, isJsonResponse = false, temperature = 0.5)
+    }
+
+    suspend fun summarizeObservationNotes(
+        context: Context,
+        notes: List<String>,
+        isMadrasah: Boolean = false
+    ): Result<String> {
+        val prompt = """
+            Anda adalah Guru Fasilitator ${if (isMadrasah) "PPRA" else "P5"}.
+            Buatkan narasi utuh laporan perkembangan ${if (isMadrasah) "Profil Pelajar Rahmatan Lil 'Alamin (PPRA)" else "Profil Pelajar Pancasila (P5)"} selama satu semester berdasarkan catatan observasi berikut:
+            ${notes.joinToString("\n- ")}
+            
+            Buatkan narasi yang komprehensif, mencakup aspek dimensi, kekuatan siswa, dan saran pengembangan ke depan.
+            Balas HANYA dengan narasi laporan saja.
+        """.trimIndent()
+        return executeWithRetryAndFallback(context, prompt, isJsonResponse = false, temperature = 0.5)
     }
 
     fun isAvailable(context: Context): Boolean {

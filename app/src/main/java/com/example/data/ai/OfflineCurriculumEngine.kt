@@ -20,7 +20,8 @@ object OfflineCurriculumEngine {
         selectedPpra: List<String> = emptyList(),
         targetGayaBelajar: List<String>,
         targetKesiapan: List<String>,
-        additionalNotes: String
+        additionalNotes: String,
+        refleksi: String
     ): GeneratedModulContent {
         val isMadrasah = KurikulumMerdekaReferenceData.isMadrasahSubject(subject) || schoolName.contains("MI", ignoreCase = true) || schoolName.contains("MTs", ignoreCase = true) || schoolName.contains("MA", ignoreCase = true) || schoolName.contains("Madrasah", ignoreCase = true) || selectedPpra.isNotEmpty()
         val matchedCP = KurikulumMerdekaReferenceData.findMatchingCP(subject, fase, topic)
@@ -215,7 +216,10 @@ object OfflineCurriculumEngine {
             asesmenSumatif = asesmenSumatif,
             rubrikPenilaian = rubrik,
             remedialDanPengayaan = remedial,
-            lkpdDanMateri = lkpd
+            lkpdDanMateri = lkpd,
+            refleksi = refleksi,
+            glosarium = "Istilah-istilah terkait $topic dalam modul ajar ini disesuaikan dengan kurikulum.",
+            daftarPustaka = "Buku Teks Kurikulum Merdeka Kemendikbudristek RI."
         )
     }
 }

@@ -23,6 +23,9 @@ import com.example.data.model.JurnalObservasiItem
 import com.example.data.model.KurikulumMerdekaReferenceData
 import com.example.ui.theme.*
 import com.example.util.DocumentExporter
+import com.example.data.ai.GeminiService
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -36,6 +39,7 @@ fun ObservationJournalScreen(
     val todayDate = remember { SimpleDateFormat("dd/MM/yyyy", Locale("id", "ID")).format(Date()) }
 
     var selectedTab by remember { mutableIntStateOf(0) } // 0: Jurnal Harian, 1: Penilaian Antarteman
+    var isMadrasah by remember { mutableStateOf(false) }
 
     var jurnalList by remember {
         mutableStateOf(
@@ -168,6 +172,13 @@ fun ObservationJournalScreen(
                     icon = { Icon(Icons.Default.People, contentDescription = null) }
                 )
             }
+            Row(
+                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(checked = isMadrasah, onCheckedChange = { isMadrasah = it })
+                Text("Konteks Madrasah (PPRA)")
+            }
 
             LazyColumn(
                 modifier = Modifier
@@ -200,6 +211,34 @@ fun ObservationJournalScreen(
                                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                                     lineHeight = 16.sp
                                 )
+                            }
+                        }
+                    }
+
+                    // AI Summarizer Button
+                    item {
+                        var aiSummary by remember { mutableStateOf("") }
+                        var isSummarizing by remember { mutableStateOf(false) }
+                        val scope = rememberCoroutineScope()
+
+                        Column(modifier = Modifier.padding(top = 8.dp)) {
+                            Button(
+                                onClick = {
+                                    isSummarizing = true
+                                    scope.launch {
+                                        val notes = jurnalList.map { it.catatanPerilaku }
+                                        val result = GeminiService.summarizeObservationNotes(context, notes, isMadrasah)
+                                        result.onSuccess { aiSummary = it }
+                                        isSummarizing = false
+                                    }
+                                },
+                                enabled = !isSummarizing,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(if (isSummarizing) "..." else "Ringkas Observasi dengan AI")
+                            }
+                            if (aiSummary.isNotBlank()) {
+                                Text("Ringkasan AI:\n$aiSummary", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 8.dp))
                             }
                         }
                     }
@@ -458,7 +497,7 @@ fun ObservationJournalScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Dimensi P3", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(if (isMadrasah) "Dimensi PPRA" else "Dimensi P3", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(inputDimensi, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             }
                             Icon(Icons.Default.ArrowDropDown, contentDescription = null)
@@ -467,14 +506,26 @@ fun ObservationJournalScreen(
                             expanded = dimensiExpanded,
                             onDismissRequest = { dimensiExpanded = false }
                         ) {
-                            KurikulumMerdekaReferenceData.PROFIL_PELAJAR_PANCASILA.forEach { dim ->
-                                DropdownMenuItem(
-                                    text = { Text(dim.title) },
-                                    onClick = {
-                                        inputDimensi = dim.title
-                                        dimensiExpanded = false
-                                    }
-                                )
+                            if (isMadrasah) {
+                                KurikulumMerdekaReferenceData.PROFIL_PELAJAR_RAHMATAN_LIL_ALAMIN.forEach { dim ->
+                                    DropdownMenuItem(
+                                        text = { Text(dim.title) },
+                                        onClick = {
+                                            inputDimensi = dim.title
+                                            dimensiExpanded = false
+                                        }
+                                    )
+                                }
+                            } else {
+                                KurikulumMerdekaReferenceData.PROFIL_PELAJAR_PANCASILA.forEach { dim ->
+                                    DropdownMenuItem(
+                                        text = { Text(dim.title) },
+                                        onClick = {
+                                            inputDimensi = dim.title
+                                            dimensiExpanded = false
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
