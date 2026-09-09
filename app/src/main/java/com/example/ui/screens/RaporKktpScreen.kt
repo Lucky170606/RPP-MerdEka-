@@ -25,13 +25,26 @@ import com.example.data.model.StudentRaporEntry
 import com.example.ui.theme.*
 import com.example.util.DocumentExporter
 import kotlinx.coroutines.launch
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.lazy.items
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RaporKktpScreen(
+    viewModel: com.example.ui.viewmodel.ModulViewModel,
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val savedKktpList by viewModel.allSavedKktp.collectAsStateWithLifecycle(initialValue = emptyList())
+    var showHistoryDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var itemToDeleteId by remember { mutableStateOf<Long?>(null) }
+
+    val moshi = com.squareup.moshi.Moshi.Builder()
+        .add(com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory())
+        .build()
+    val listType = com.squareup.moshi.Types.newParameterizedType(List::class.java, StudentRaporEntry::class.java)
+    val jsonAdapter = moshi.adapter<List<StudentRaporEntry>>(listType)
 
     var selectedSubject by remember { mutableStateOf("Matematika") }
     var selectedGrade by remember { mutableStateOf("Kelas 4 SD") }
@@ -91,6 +104,7 @@ fun RaporKktpScreen(
     }
 
     var showAddDialog by remember { mutableStateOf(false) }
+    var editingStudentIndex by remember { mutableStateOf<Int?>(null) }
     var newStudentName by remember { mutableStateOf("") }
     var newStudentScore by remember { mutableStateOf("80") }
     var newMateriTinggi by remember { mutableStateOf("pemahaman konsep inti") }
@@ -162,6 +176,31 @@ fun RaporKktpScreen(
                         modifier = Modifier.testTag("rapor_word_btn")
                     ) {
                         Icon(Icons.Default.Description, contentDescription = "Ekspor Word")
+                    }
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                val json = jsonAdapter.toJson(studentList)
+                                viewModel.saveKktp(
+                                    com.example.data.local.KktpEntity(
+                                        title = "Rekap e-Rapor $selectedSubject ($selectedGrade)",
+                                        subject = selectedSubject,
+                                        fase = "Fase B",
+                                        grade = selectedGrade,
+                                        semester = "Ganjil",
+                                        jsonContent = json
+                                    )
+                                )
+                                Toast.makeText(context, "Berhasil disimpan ke Database!", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    ) {
+                        Icon(Icons.Default.Save, contentDescription = "Simpan ke DB")
+                    }
+                    IconButton(
+                        onClick = { showHistoryDialog = true }
+                    ) {
+                        Icon(Icons.Default.History, contentDescription = "Riwayat Tersimpan")
                     }
                 }
             )
@@ -411,8 +450,26 @@ fun RaporKktpScreen(
                         Spacer(Modifier.height(8.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
+                            IconButton(
+                                onClick = {
+                                    editingStudentIndex = index
+                                    newStudentName = student.namaSiswa
+                                    newStudentScore = student.nilaiAkhir.toString()
+                                    newMateriTinggi = student.materiTinggi
+                                    newMateriRendah = student.materiRendah
+                                    aiGeneratedDescription = student.deskripsiCapaian
+                                    showAddDialog = true
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = "Edit Siswa",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
                             IconButton(
                                 onClick = {
                                     studentList = studentList.toMutableList().also { it.removeAt(index) }
@@ -437,8 +494,11 @@ fun RaporKktpScreen(
 
     if (showAddDialog) {
         AlertDialog(
-            onDismissRequest = { showAddDialog = false },
-            title = { Text("Tambah Siswa & Rapor", fontWeight = FontWeight.Bold) },
+            onDismissRequest = { 
+                editingStudentIndex = null
+                showAddDialog = false 
+            },
+            title = { Text(if (editingStudentIndex == null) "Tambah Siswa & Rapor" else "Sunting Siswa & Rapor", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
@@ -507,13 +567,19 @@ fun RaporKktpScreen(
                                 newMateriRendah
                             )
                         }
-                        studentList = studentList + StudentRaporEntry(
+                        val updatedEntry = StudentRaporEntry(
                             namaSiswa = newStudentName.ifBlank { "Siswa Baru" },
                             nilaiAkhir = score,
                             materiTinggi = newMateriTinggi,
                             materiRendah = newMateriRendah,
                             deskripsiCapaian = desc
                         )
+                        studentList = if (editingStudentIndex != null) {
+                            studentList.toMutableList().also { it[editingStudentIndex!!] = updatedEntry }
+                        } else {
+                            studentList + updatedEntry
+                        }
+                        editingStudentIndex = null
                         newStudentName = ""
                         aiGeneratedDescription = ""
                         showAddDialog = false
@@ -523,11 +589,125 @@ fun RaporKktpScreen(
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
-                    Text("Simpan & Susun Deskripsi")
+                    Text(if (editingStudentIndex == null) "Simpan & Susun Deskripsi" else "Perbarui Deskripsi")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showAddDialog = false }) {
+                TextButton(onClick = { 
+                    editingStudentIndex = null
+                    showAddDialog = false 
+                }) {
+                    Text("Batal")
+                }
+            }
+        )
+    }
+
+    if (showHistoryDialog) {
+        AlertDialog(
+            onDismissRequest = { showHistoryDialog = false },
+            title = { Text("Riwayat Tersimpan (Database)") },
+            text = {
+                if (savedKktpList.isEmpty()) {
+                    Text("Belum ada riwayat rekap rapor yang tersimpan.")
+                } else {
+                    LazyColumn(modifier = Modifier.height(300.dp)) {
+                        items(savedKktpList) { item ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                onClick = {
+                                    try {
+                                        val parsed = jsonAdapter.fromJson(item.jsonContent) as? List<StudentRaporEntry>
+                                        if (parsed != null) {
+                                            studentList = parsed
+                                            selectedSubject = item.subject
+                                            selectedGrade = item.grade
+                                            Toast.makeText(context, "Berhasil memuat data dari Database!", Toast.LENGTH_SHORT).show()
+                                            showHistoryDialog = false
+                                        }
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Gagal memuat data", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(item.title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                        Text("Mapel: ${item.subject} | Kelas: ${item.grade}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        IconButton(
+                                            onClick = {
+                                                try {
+                                                    val parsed = jsonAdapter.fromJson(item.jsonContent) as? List<StudentRaporEntry>
+                                                    if (parsed != null) {
+                                                        studentList = parsed
+                                                        selectedSubject = item.subject
+                                                        selectedGrade = item.grade
+                                                        Toast.makeText(context, "Berhasil memuat data untuk disunting!", Toast.LENGTH_SHORT).show()
+                                                        showHistoryDialog = false
+                                                    }
+                                                } catch (e: Exception) {
+                                                    Toast.makeText(context, "Gagal memuat data", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        ) {
+                                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
+                                        }
+                                        IconButton(
+                                            onClick = {
+                                                itemToDeleteId = item.id
+                                                showDeleteConfirmDialog = true
+                                            }
+                                        ) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = MaterialTheme.colorScheme.error)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showHistoryDialog = false }) {
+                    Text("Tutup")
+                }
+            }
+        )
+    }
+
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text("Konfirmasi Hapus") },
+            text = { Text("Apakah Anda yakin ingin menghapus data riwayat ini dari database?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        itemToDeleteId?.let { id ->
+                            scope.launch {
+                                viewModel.deleteKktp(id)
+                                Toast.makeText(context, "Data berhasil dihapus", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        showDeleteConfirmDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Hapus")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
                     Text("Batal")
                 }
             }

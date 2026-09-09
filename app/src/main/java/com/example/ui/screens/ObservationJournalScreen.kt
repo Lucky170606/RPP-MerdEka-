@@ -26,6 +26,8 @@ import com.example.util.DocumentExporter
 import com.example.data.ai.GeminiService
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.lazy.items
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -33,9 +35,17 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ObservationJournalScreen(
+    viewModel: com.example.ui.viewmodel.ModulViewModel,
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val savedObservations by viewModel.allSavedObservations.collectAsStateWithLifecycle(initialValue = emptyList())
+    var showHistoryDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var itemToDeleteId by remember { mutableStateOf<Long?>(null) }
+    var editingObservationId by remember { mutableStateOf<Long?>(null) }
+    var editingJournalIndex by remember { mutableStateOf<Int?>(null) }
     val todayDate = remember { SimpleDateFormat("dd/MM/yyyy", Locale("id", "ID")).format(Date()) }
 
     var selectedTab by remember { mutableIntStateOf(0) } // 0: Jurnal Harian, 1: Penilaian Antarteman
@@ -132,6 +142,32 @@ fun ObservationJournalScreen(
                         modifier = Modifier.testTag("obs_word_btn")
                     ) {
                         Icon(Icons.Default.Description, contentDescription = "Ekspor Word")
+                    }
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                jurnalList.forEach { item ->
+                                    viewModel.saveObservation(
+                                        com.example.data.local.ObservationJournalEntity(
+                                            studentName = item.namaSiswa,
+                                            classOrPhase = "Kelas 4",
+                                            dimension = item.dimensiP3,
+                                            observationNote = item.catatanPerilaku,
+                                            attitudeStatus = item.butirSikapPositifNegatif,
+                                            date = item.tanggal
+                                        )
+                                    )
+                                }
+                                Toast.makeText(context, "Semua jurnal berhasil disimpan ke Database!", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    ) {
+                        Icon(Icons.Default.Save, contentDescription = "Simpan ke DB")
+                    }
+                    IconButton(
+                        onClick = { showHistoryDialog = true }
+                    ) {
+                        Icon(Icons.Default.History, contentDescription = "Riwayat Tersimpan")
                     }
                 }
             )
@@ -337,11 +373,29 @@ fun ObservationJournalScreen(
                                 Spacer(Modifier.height(6.dp))
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End
+                                    horizontalArrangement = Arrangement.End,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     IconButton(
                                         onClick = {
-                                            jurnalList = jurnalList.toMutableList().also { it.removeAt(index) }
+                                            editingJournalIndex = index
+                                            inputNamaSiswa = item.namaSiswa
+                                            inputDimensi = item.dimensiP3
+                                            inputPerilaku = item.catatanPerilaku
+                                            inputSikapPositif = item.butirSikapPositifNegatif.contains("Positif")
+                                            inputTindakLanjut = item.rencanaTindakLanjut
+                                            showAddDialog = true
+                                        }
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Edit,
+                                            contentDescription = "Edit Jurnal",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            jurnalList = jurnalList.toMutableList().also { if (index < jurnalList.size) it.removeAt(index) }
                                         }
                                     ) {
                                         Icon(
@@ -566,7 +620,7 @@ fun ObservationJournalScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        jurnalList = jurnalList + JurnalObservasiItem(
+                        val newItem = JurnalObservasiItem(
                             tanggal = todayDate,
                             namaSiswa = inputNamaSiswa.ifBlank { "Siswa" },
                             dimensiP3 = inputDimensi,
@@ -574,6 +628,27 @@ fun ObservationJournalScreen(
                             butirSikapPositifNegatif = if (inputSikapPositif) "Positif (+)" else "Perlu Pembinaan (-)",
                             rencanaTindakLanjut = inputTindakLanjut.ifBlank { "Diberikan motivasi dan arahan." }
                         )
+                        jurnalList = if (editingJournalIndex != null && editingJournalIndex!! < jurnalList.size) {
+                            jurnalList.toMutableList().also { it[editingJournalIndex!!] = newItem }
+                        } else {
+                            jurnalList + newItem
+                        }
+                        editingJournalIndex = null
+                        scope.launch {
+                            viewModel.saveObservation(
+                                com.example.data.local.ObservationJournalEntity(
+                                    id = editingObservationId ?: 0L,
+                                    studentName = newItem.namaSiswa,
+                                    classOrPhase = "Kelas 4",
+                                    dimension = newItem.dimensiP3,
+                                    observationNote = newItem.catatanPerilaku,
+                                    attitudeStatus = newItem.butirSikapPositifNegatif,
+                                    date = newItem.tanggal
+                                )
+                            )
+                            Toast.makeText(context, if (editingObservationId == null) "Berhasil disimpan ke Jurnal" else "Berhasil diperbarui", Toast.LENGTH_SHORT).show()
+                            editingObservationId = null
+                        }
                         inputNamaSiswa = ""
                         inputPerilaku = ""
                         inputTindakLanjut = ""
@@ -584,11 +659,108 @@ fun ObservationJournalScreen(
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
-                    Text("Simpan ke Jurnal")
+                    Text(if (editingObservationId == null) "Simpan ke Jurnal" else "Perbarui Jurnal")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showAddDialog = false }) {
+                TextButton(onClick = { 
+                    editingObservationId = null
+                    showAddDialog = false 
+                }) {
+                    Text("Batal")
+                }
+            }
+        )
+    }
+
+    if (showHistoryDialog) {
+        AlertDialog(
+            onDismissRequest = { showHistoryDialog = false },
+            title = { Text("Riwayat Jurnal Observasi (Database)") },
+            text = {
+                if (savedObservations.isEmpty()) {
+                    Text("Belum ada riwayat jurnal yang tersimpan.")
+                } else {
+                    LazyColumn(modifier = Modifier.height(300.dp)) {
+                        items(savedObservations) { item ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("${item.studentName} (${item.dimension})", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                        Text(item.observationNote, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text("Sikap: ${item.attitudeStatus} | ${item.date}", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                                    }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        IconButton(
+                                            onClick = {
+                                                editingObservationId = item.id
+                                                inputNamaSiswa = item.studentName
+                                                inputDimensi = item.dimension
+                                                inputPerilaku = item.observationNote
+                                                inputSikapPositif = item.attitudeStatus.contains("Positif")
+                                                inputTindakLanjut = ""
+                                                showHistoryDialog = false
+                                                showAddDialog = true
+                                            }
+                                        ) {
+                                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
+                                        }
+                                        IconButton(
+                                            onClick = {
+                                                itemToDeleteId = item.id
+                                                showDeleteConfirmDialog = true
+                                            }
+                                        ) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = MaterialTheme.colorScheme.error)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showHistoryDialog = false }) {
+                    Text("Tutup")
+                }
+            }
+        )
+    }
+
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text("Konfirmasi Hapus") },
+            text = { Text("Apakah Anda yakin ingin menghapus catatan jurnal ini dari database?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        itemToDeleteId?.let { id ->
+                            scope.launch {
+                                viewModel.deleteObservation(id)
+                                Toast.makeText(context, "Catatan berhasil dihapus", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        showDeleteConfirmDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Hapus")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
                     Text("Batal")
                 }
             }

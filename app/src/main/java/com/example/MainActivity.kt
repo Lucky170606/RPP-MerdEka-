@@ -78,8 +78,8 @@ class MainActivity : ComponentActivity() {
                         is Screen.ProtaPromes -> ProtaPromesScreen(viewModel = viewModel, onNavigateBack = { viewModel.navigateTo(Screen.Home) })
                         is Screen.AcademicCalendar -> AcademicCalendarScreen(viewModel = viewModel, onNavigateBack = { viewModel.navigateTo(Screen.Home) })
                         is Screen.Atp -> AtpScreen(viewModel = viewModel, onNavigateBack = { viewModel.navigateTo(Screen.Home) })
-                        is Screen.RaporKktp -> RaporKktpScreen(onNavigateBack = { viewModel.navigateTo(Screen.Home) })
-                        is Screen.ObservationJournal -> ObservationJournalScreen(onNavigateBack = { viewModel.navigateTo(Screen.Home) })
+                        is Screen.RaporKktp -> RaporKktpScreen(viewModel = viewModel, onNavigateBack = { viewModel.navigateTo(Screen.Home) })
+                        is Screen.ObservationJournal -> ObservationJournalScreen(viewModel = viewModel, onNavigateBack = { viewModel.navigateTo(Screen.Home) })
                         is Screen.Settings -> SettingsScreen(onNavigateBack = { viewModel.navigateBack() })
                     }
                 }

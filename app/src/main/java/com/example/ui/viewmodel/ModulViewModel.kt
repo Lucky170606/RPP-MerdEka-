@@ -901,4 +901,20 @@ class ModulViewModel(application: Application) : AndroidViewModel(application) {
         calendarDao.deleteForSemester(year, semester)
         calendarDao.insertAll(defaultWeeks)
     }
+
+    suspend fun saveKktp(entity: com.example.data.local.KktpEntity): Long {
+        return kktpDao.insertKktp(entity)
+    }
+
+    suspend fun deleteKktp(id: Long) {
+        kktpDao.deleteKktpById(id)
+    }
+
+    suspend fun saveObservation(entity: com.example.data.local.ObservationJournalEntity): Long {
+        return observationJournalDao.insertObservation(entity)
+    }
+
+    suspend fun deleteObservation(id: Long) {
+        observationJournalDao.deleteObservationById(id)
+    }
 }
