@@ -218,80 +218,96 @@ fun ObservationJournalScreen(
                 Text("Konteks Madrasah (PPRA)")
             }
 
-            if (selectedTab == 0) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Info,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                            Spacer(Modifier.width(10.dp))
-                            Text(
-                                "Jurnal observasi harian mencatat perilaku menonjol (positif maupun butuh bimbingan) siswa untuk asesmen autentik P3.",
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                lineHeight = 15.sp
-                            )
-                        }
-                    }
-
-                    Button(
-                        onClick = {
-                            isSummarizing = true
-                            scope.launch {
-                                val notes = jurnalList.map { it.catatanPerilaku }
-                                val result = GeminiService.summarizeObservationNotes(context, notes, isMadrasah)
-                                result.onSuccess { aiSummary = it }
-                                isSummarizing = false
-                            }
-                        },
-                        enabled = !isSummarizing,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(if (isSummarizing) "Sedang meringkas..." else "✨ Ringkas Catatan Kelas")
-                    }
-
-                    if (aiSummary.isNotBlank()) {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text("Ringkasan AI:", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
-                                Spacer(Modifier.height(4.dp))
-                                Text(aiSummary, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface, lineHeight = 16.sp)
-                            }
-                        }
-                    }
-                }
-            }
-
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp),
+                    .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 if (selectedTab == 0) {
+                    item {
+                        Spacer(Modifier.height(8.dp))
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    "Jurnal observasi harian mencatat perilaku menonjol (positif maupun butuh bimbingan) siswa untuk asesmen autentik P3.",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    lineHeight = 15.sp
+                                )
+                            }
+                        }
+                    }
+
+                    item {
+                        Button(
+                            onClick = {
+                                isSummarizing = true
+                                scope.launch {
+                                    val notes = jurnalList.map { it.catatanPerilaku }
+                                    val result = GeminiService.summarizeObservationNotes(context, notes, isMadrasah)
+                                    result.onSuccess { aiSummary = it }
+                                    isSummarizing = false
+                                }
+                            },
+                            enabled = !isSummarizing,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        ) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(if (isSummarizing) "Sedang meringkas..." else "✨ Ringkas Catatan Kelas")
+                        }
+                    }
+
+                    if (aiSummary.isNotBlank()) {
+                        item {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("Ringkasan AI:", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                                        Row {
+                                             IconButton(
+                                                onClick = {
+                                                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("AI Summary", aiSummary))
+                                                    android.widget.Toast.makeText(context, "Disalin", android.widget.Toast.LENGTH_SHORT).show()
+                                                },
+                                                modifier = Modifier.size(32.dp)
+                                            ) {
+                                                Icon(Icons.Default.ContentCopy, contentDescription = "Salin", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                                            }
+                                        }
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(aiSummary, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface, lineHeight = 16.sp)
+                                }
+                            }
+                        }
+                    }
+
                     itemsIndexed(jurnalList) { index, item ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
