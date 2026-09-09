@@ -123,7 +123,7 @@ fun ObservationJournalScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            DocumentExporter.printOrSaveObservationPdf(context, jurnalList, peerQuestions)
+                            DocumentExporter.printOrSaveObservationPdf(context, jurnalList, peerQuestions, isMadrasah)
                         },
                         modifier = Modifier.testTag("obs_print_btn")
                     ) {
@@ -131,7 +131,7 @@ fun ObservationJournalScreen(
                     }
                     IconButton(
                         onClick = {
-                            val uri = DocumentExporter.exportObservationToWord(context, jurnalList, peerQuestions)
+                            val uri = DocumentExporter.exportObservationToWord(context, jurnalList, peerQuestions, isMadrasah)
                             if (uri != null) {
                                 val intent = Intent(Intent.ACTION_SEND).apply {
                                     type = "application/msword"
@@ -588,7 +588,7 @@ fun ObservationJournalScreen(
                     item {
                         Button(
                             onClick = {
-                                DocumentExporter.printOrSaveObservationPdf(context, jurnalList, peerQuestions)
+                                DocumentExporter.printOrSaveObservationPdf(context, jurnalList, peerQuestions, isMadrasah)
                             },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(

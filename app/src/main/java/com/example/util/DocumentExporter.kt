@@ -1239,7 +1239,8 @@ ${modul.lkpdDanMateri}
     fun generateObservationAndPeerHtml(
         jurnalList: List<JurnalObservasiItem>,
         peerQuestions: List<PeerAssessmentQuestion>,
-        profile: TeacherProfile? = null
+        profile: TeacherProfile? = null,
+        isMadrasah: Boolean = false
     ): String {
         val teacher = profile?.teacherName ?: "Guru Pengampu"
         val school = profile?.schoolName ?: "Satuan Pendidikan"
@@ -1297,8 +1298,8 @@ ${modul.lkpdDanMateri}
             </head>
             <body>
                 <div class="header-box">
-                    <h1>INSTRUMEN JURNAL OBSERVASI & PENILAIAN SIKAP P3</h1>
-                    <h2>PROFIL PELAJAR PANCASILA - KURIKULUM MERDEKA</h2>
+                    <h1>INSTRUMEN JURNAL OBSERVASI & PENILAIAN SIKAP ${if (isMadrasah) "PPRA" else "P3"}</h1>
+                    <h2>PROFIL ${if (isMadrasah) "PELAJAR PANCASILA RAHMATAN LIL 'ALAMIN" else "PELAJAR PANCASILA"} - KURIKULUM MERDEKA</h2>
                     <p>Satuan Pendidikan: $school | Tahun Ajaran: ${profile?.defaultAcademicYear ?: "2024/2025"}</p>
                 </div>
 
@@ -1367,11 +1368,11 @@ ${modul.lkpdDanMateri}
         """.trimIndent()
     }
 
-    fun printOrSaveObservationPdf(context: Context, jurnalList: List<JurnalObservasiItem>, peerQuestions: List<PeerAssessmentQuestion>) {
+    fun printOrSaveObservationPdf(context: Context, jurnalList: List<JurnalObservasiItem>, peerQuestions: List<PeerAssessmentQuestion>, isMadrasah: Boolean) {
         val profile = TeacherProfile.loadFromPreferences(context)
         val printManager = context.getSystemService(Context.PRINT_SERVICE) as? PrintManager ?: return
         val webView = WebView(context)
-        val htmlContent = generateObservationAndPeerHtml(jurnalList, peerQuestions, profile)
+        val htmlContent = generateObservationAndPeerHtml(jurnalList, peerQuestions, profile, isMadrasah)
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?) = false
@@ -1388,10 +1389,10 @@ ${modul.lkpdDanMateri}
         webView.loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
     }
 
-    fun exportObservationToWord(context: Context, jurnalList: List<JurnalObservasiItem>, peerQuestions: List<PeerAssessmentQuestion>): Uri? {
+    fun exportObservationToWord(context: Context, jurnalList: List<JurnalObservasiItem>, peerQuestions: List<PeerAssessmentQuestion>, isMadrasah: Boolean): Uri? {
         val profile = TeacherProfile.loadFromPreferences(context)
         try {
-            val html = generateObservationAndPeerHtml(jurnalList, peerQuestions, profile)
+            val html = generateObservationAndPeerHtml(jurnalList, peerQuestions, profile, isMadrasah)
             val fileName = "Jurnal_Observasi_P3.doc"
             val file = File(context.cacheDir, fileName)
             FileOutputStream(file).use { out -> out.write(html.toByteArray(Charsets.UTF_8)) }
