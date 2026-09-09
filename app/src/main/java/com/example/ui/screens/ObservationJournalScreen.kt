@@ -50,6 +50,8 @@ fun ObservationJournalScreen(
 
     var selectedTab by remember { mutableIntStateOf(0) } // 0: Jurnal Harian, 1: Penilaian Antarteman
     var isMadrasah by remember { mutableStateOf(false) }
+    var aiSummary by remember { mutableStateOf("") }
+    var isSummarizing by remember { mutableStateOf(false) }
 
     var jurnalList by remember {
         mutableStateOf(
@@ -209,11 +211,78 @@ fun ObservationJournalScreen(
                 )
             }
             Row(
-                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Checkbox(checked = isMadrasah, onCheckedChange = { isMadrasah = it })
                 Text("Konteks Madrasah (PPRA)")
+            }
+
+            if (selectedTab == 0) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                "Jurnal observasi harian mencatat perilaku menonjol (positif maupun butuh bimbingan) siswa untuk asesmen autentik P3.",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                lineHeight = 15.sp
+                            )
+                        }
+                    }
+
+                    Button(
+                        onClick = {
+                            isSummarizing = true
+                            scope.launch {
+                                val notes = jurnalList.map { it.catatanPerilaku }
+                                val result = GeminiService.summarizeObservationNotes(context, notes, isMadrasah)
+                                result.onSuccess { aiSummary = it }
+                                isSummarizing = false
+                            }
+                        },
+                        enabled = !isSummarizing,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (isSummarizing) "Sedang meringkas..." else "✨ Ringkas Catatan Kelas")
+                    }
+
+                    if (aiSummary.isNotBlank()) {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("Ringkasan AI:", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                                Spacer(Modifier.height(4.dp))
+                                Text(aiSummary, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface, lineHeight = 16.sp)
+                            }
+                        }
+                    }
+                }
             }
 
             LazyColumn(
@@ -223,62 +292,6 @@ fun ObservationJournalScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 if (selectedTab == 0) {
-                    // Jurnal List
-                    item {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.Info,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-                                Spacer(Modifier.width(10.dp))
-                                Text(
-                                    "Jurnal observasi harian mencatat perilaku menonjol (positif maupun butuh bimbingan) siswa selama proses KBM untuk asesmen autentik P3.",
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    lineHeight = 16.sp
-                                )
-                            }
-                        }
-                    }
-
-                    // AI Summarizer Button
-                    item {
-                        var aiSummary by remember { mutableStateOf("") }
-                        var isSummarizing by remember { mutableStateOf(false) }
-                        val scope = rememberCoroutineScope()
-
-                        Column(modifier = Modifier.padding(top = 8.dp)) {
-                            Button(
-                                onClick = {
-                                    isSummarizing = true
-                                    scope.launch {
-                                        val notes = jurnalList.map { it.catatanPerilaku }
-                                        val result = GeminiService.summarizeObservationNotes(context, notes, isMadrasah)
-                                        result.onSuccess { aiSummary = it }
-                                        isSummarizing = false
-                                    }
-                                },
-                                enabled = !isSummarizing,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(if (isSummarizing) "..." else "Ringkas Observasi dengan AI")
-                            }
-                            if (aiSummary.isNotBlank()) {
-                                Text("Ringkasan AI:\n$aiSummary", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 8.dp))
-                            }
-                        }
-                    }
-
                     itemsIndexed(jurnalList) { index, item ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -370,39 +383,75 @@ fun ObservationJournalScreen(
                                     }
                                 }
 
-                                Spacer(Modifier.height(6.dp))
+                                 Spacer(Modifier.height(6.dp))
+                                var studentAiSummary by remember { mutableStateOf("") }
+                                var isStudentSummarizing by remember { mutableStateOf(false) }
+
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    IconButton(
+                                    TextButton(
                                         onClick = {
-                                            editingJournalIndex = index
-                                            inputNamaSiswa = item.namaSiswa
-                                            inputDimensi = item.dimensiP3
-                                            inputPerilaku = item.catatanPerilaku
-                                            inputSikapPositif = item.butirSikapPositifNegatif.contains("Positif")
-                                            inputTindakLanjut = item.rencanaTindakLanjut
-                                            showAddDialog = true
-                                        }
+                                            isStudentSummarizing = true
+                                            scope.launch {
+                                                val studentNotes = jurnalList.filter { it.namaSiswa.equals(item.namaSiswa, ignoreCase = true) }.map { it.catatanPerilaku }
+                                                val res = GeminiService.summarizeStudentObservation(context, item.namaSiswa, studentNotes, isMadrasah)
+                                                res.onSuccess { studentAiSummary = it }
+                                                isStudentSummarizing = false
+                                            }
+                                        },
+                                        enabled = !isStudentSummarizing
                                     ) {
-                                        Icon(
-                                            Icons.Default.Edit,
-                                            contentDescription = "Edit Jurnal",
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
+                                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(14.dp))
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(if (isStudentSummarizing) "Merangkum..." else "AI Narasi Rapor Siswa", fontSize = 11.sp)
                                     }
-                                    IconButton(
-                                        onClick = {
-                                            jurnalList = jurnalList.toMutableList().also { if (index < jurnalList.size) it.removeAt(index) }
+
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        IconButton(
+                                            onClick = {
+                                                editingJournalIndex = index
+                                                inputNamaSiswa = item.namaSiswa
+                                                inputDimensi = item.dimensiP3
+                                                inputPerilaku = item.catatanPerilaku
+                                                inputSikapPositif = item.butirSikapPositifNegatif.contains("Positif")
+                                                inputTindakLanjut = item.rencanaTindakLanjut
+                                                showAddDialog = true
+                                            }
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Edit,
+                                                contentDescription = "Edit Jurnal",
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
                                         }
+                                        IconButton(
+                                            onClick = {
+                                                jurnalList = jurnalList.toMutableList().also { if (index < jurnalList.size) it.removeAt(index) }
+                                            }
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Delete,
+                                                contentDescription = "Hapus",
+                                                tint = MaterialTheme.colorScheme.error
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (studentAiSummary.isNotBlank()) {
+                                    Spacer(Modifier.height(4.dp))
+                                    Card(
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                        shape = RoundedCornerShape(8.dp)
                                     ) {
-                                        Icon(
-                                            Icons.Default.Delete,
-                                            contentDescription = "Hapus",
-                                            tint = MaterialTheme.colorScheme.error
-                                        )
+                                        Column(modifier = Modifier.padding(10.dp)) {
+                                            Text("Narasi AI untuk Rapor ${item.namaSiswa}:", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                                            Spacer(Modifier.height(2.dp))
+                                            Text(studentAiSummary, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface, lineHeight = 15.sp)
+                                        }
                                     }
                                 }
                             }

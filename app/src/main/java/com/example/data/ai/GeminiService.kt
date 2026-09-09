@@ -558,6 +558,23 @@ object GeminiService {
         return executeWithRetryAndFallback(context, prompt, isJsonResponse = false, temperature = 0.5)
     }
 
+    suspend fun summarizeStudentObservation(
+        context: Context,
+        studentName: String,
+        notes: List<String>,
+        isMadrasah: Boolean = false
+    ): Result<String> {
+        val prompt = """
+            Anda adalah Guru Fasilitator ${if (isMadrasah) "PPRA" else "P5"}.
+            Buatkan deskripsi naratif rapor formatif untuk peserta didik bernama "$studentName" berdasarkan catatan observasi berikut:
+            ${notes.joinToString("\n- ")}
+            
+            Buatkan dalam 1-2 paragraf yang profesional, mengapresiasi kemajuan dan kekuatan karakter siswa, serta memberikan kalimat bimbingan yang konstruktif untuk pengembangannya.
+            Balas HANYA dengan narasi deskripsi rapor saja.
+        """.trimIndent()
+        return executeWithRetryAndFallback(context, prompt, isJsonResponse = false, temperature = 0.5)
+    }
+
     fun isAvailable(context: Context): Boolean {
         return ApiKeyManager.hasUserApiKey(context)
     }
