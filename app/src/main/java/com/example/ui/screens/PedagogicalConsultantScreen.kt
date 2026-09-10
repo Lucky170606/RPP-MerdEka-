@@ -191,13 +191,23 @@ fun PedagogicalConsultantScreen(
                 val answer = if (hasKey) {
                     try {
                         val aiPrompt = """
-                            Sebagai konsultan ahli Kurikulum Merdeka Kemendikbudristek, berikan panduan praktis, terstruktur, dan aplikatif untuk pertanyaan guru berikut:
+                            Sebagai konsultan ahli Kurikulum Merdeka Kemendikbudristek, berikan panduan praktis, terstruktur, mendalam, dan sangat aplikatif untuk pertanyaan guru berikut:
                             $trimmed
                             
-                            PANDUAN FORMAT:
-                            - Berikan poin-poin yang jelas dan mudah dipahami.
-                            - Berikan contoh konkret di dalam kelas atau lingkungan sekolah.
-                            - Gunakan format teks rapi dan hindari rumus LaTeX berlebih.
+                            PANDUAN STRUKTUR, PARAGRAF & TATA BAHASA:
+                            1. JUDUL BAGIAN: Gunakan tanda ### untuk setiap judul strategi/topik utama agar berstruktur rapi.
+                            2. TATA LETAK POIN & SUB-POIN:
+                               - Tulis nama metode/poin utama dengan jelas dan tebal, contoh: - **Metode "Fact-Checking" (Uji Akurasi)**
+                               - Berikan penjelasan operasional langsung di bawahnya dengan indentasi dan label tegas:
+                                 * **Cara Kerja:** [penjelasan langkah aksi guru/siswa]
+                                 * **Fokus Kritis / Contoh:** [kompetensi atau contoh riil di kelas]
+                               - Pisahkan setiap metode/kelompok poin dengan baris kosong ganda (jarak bernapas) agar tidak menumpuk padat.
+                            3. TANDA BACA & KALIMAT:
+                               - Gunakan bahasa Indonesia baku, lugas, dan mengalir (sesuai kaidah EYD/PUEBI).
+                               - Gunakan tanda petik ("..."), titik dua (:), dan huruf kapital pada istilah dengan rapi.
+                            4. LARANGAN TEGAS:
+                               - DILARANG menggunakan kode matematika/LaTeX mentah seperti $\rightarrow$, $\Rightarrow$, \to, dsb. Gunakan tanda panah biasa (→) atau kata "menjadi" / "menghasilkan".
+                               - Hindari membuat daftar poin panjang satu warna yang seragam tanpa pembagian hierarki yang jelas.
                         """.trimIndent()
 
                         val result = withTimeoutOrNull(360000L) {
@@ -209,12 +219,12 @@ fun PedagogicalConsultantScreen(
                             usedSource = "Offline Kurikulum Merdeka"
                             isFallback = true
                             errorReason = "Waktu tunggu habis (Timeout)"
-                            PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
+                            cleanLatexAndSymbols(PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed))
                         } else {
                             isOnlineActive = true
                             usedSource = "Gemini AI"
                             isFallback = false
-                            result
+                            cleanLatexAndSymbols(result)
                         }
                     } catch (ce: CancellationException) {
                         throw ce
@@ -223,18 +233,18 @@ fun PedagogicalConsultantScreen(
                         usedSource = "Offline Kurikulum Merdeka"
                         isFallback = true
                         errorReason = e.localizedMessage ?: "Gangguan jaringan API"
-                        PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
+                        cleanLatexAndSymbols(PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed))
                     }
                 } else {
                     isOnlineActive = false
                     usedSource = "Offline Kurikulum Merdeka"
                     isFallback = false
-                    PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed)
+                    cleanLatexAndSymbols(PedagogicalConsultantEngine.answerPedagogicalQuery(trimmed))
                 }
 
                 val responseMsg = ChatMessage(
                     sender = "AI",
-                    content = answer,
+                    content = cleanLatexAndSymbols(answer),
                     source = usedSource,
                     isFallback = isFallback,
                     originalQuery = trimmed,
@@ -1166,11 +1176,43 @@ fun ModernAiBubble(
     }
 }
 
+fun cleanLatexAndSymbols(input: String): String {
+    return input
+        // Replace LaTeX arrows with clean Unicode arrows
+        .replace(Regex("\\$\\s*\\\\rightarrow\\s*\\$|\\\\rightarrow|\\$\\s*\\\\to\\s*\\$|\\\\to"), " → ")
+        .replace(Regex("\\$\\s*\\\\Rightarrow\\s*\\$|\\\\Rightarrow|\\$\\s*\\\\implies\\s*\\$|\\\\implies"), " ⇒ ")
+        .replace(Regex("\\$\\s*\\\\leftarrow\\s*\\$|\\\\leftarrow|\\$\\s*\\\\gets\\s*\\$|\\\\gets"), " ← ")
+        .replace(Regex("\\$\\s*\\\\Leftarrow\\s*\\$|\\\\Leftarrow"), " ⇐ ")
+        .replace(Regex("\\$\\s*\\\\leftrightarrow\\s*\\$|\\\\leftrightarrow"), " ↔ ")
+        .replace(Regex("\\$\\s*\\\\Leftrightarrow\\s*\\$|\\\\Leftrightarrow|\\$\\s*\\\\iff\\s*\\$|\\\\iff"), " ⇔ ")
+        // Math symbols
+        .replace(Regex("\\$\\s*\\\\times\\s*\\$|\\\\times"), " × ")
+        .replace(Regex("\\$\\s*\\\\div\\s*\\$|\\\\div"), " ÷ ")
+        .replace(Regex("\\$\\s*\\\\pm\\s*\\$|\\\\pm"), " ± ")
+        .replace(Regex("\\$\\s*\\\\approx\\s*\\$|\\\\approx"), " ≈ ")
+        .replace(Regex("\\$\\s*\\\\neq?\\s*\\$|\\\\neq?"), " ≠ ")
+        .replace(Regex("\\$\\s*\\\\leq?\\s*\\$|\\\\leq?"), " ≤ ")
+        .replace(Regex("\\$\\s*\\\\geq?\\s*\\$|\\\\geq?"), " ≥ ")
+        .replace(Regex("\\$\\s*\\\\dots\\s*\\$|\\\\dots|\\$\\s*\\\\cdots\\s*\\$|\\\\cdots"), " ... ")
+        // Clean single dollar signs wrapping short LaTeX words
+        .replace(Regex("\\$([^$]+)\\$")) { matchResult ->
+            val inner = matchResult.groupValues[1].trim()
+            if (inner.startsWith("\\") || inner.contains("→") || inner.contains("⇒") || inner.length <= 15) {
+                inner.replace(Regex("\\\\(text|mathrm|mathbf)\\{([^}]+)\\}"), "$2")
+                    .replace("\\", "")
+            } else {
+                matchResult.value
+            }
+        }
+        .replace(Regex("[ ]{2,}"), " ")
+}
+
 fun parseMarkdownInline(text: String): AnnotatedString {
+    val clean = cleanLatexAndSymbols(text)
     return buildAnnotatedString {
         // Match **bold**, *italic*, _italic_, `code`
         val pattern = Pattern.compile("(\\*\\*(.+?)\\*\\*)|(\\*(.+?)\\*)|(_(.+?)_)|(`(.+?)`)")
-        val matcher = pattern.matcher(text)
+        val matcher = pattern.matcher(clean)
         var lastIndex = 0
 
         while (matcher.find()) {
@@ -1178,7 +1220,7 @@ fun parseMarkdownInline(text: String): AnnotatedString {
             val end = matcher.end()
 
             if (start > lastIndex) {
-                val plainText = text.substring(lastIndex, start).replace("*", "")
+                val plainText = clean.substring(lastIndex, start).replace("*", "")
                 append(plainText)
             }
 
@@ -1215,8 +1257,8 @@ fun parseMarkdownInline(text: String): AnnotatedString {
             lastIndex = end
         }
 
-        if (lastIndex < text.length) {
-            val remaining = text.substring(lastIndex).replace("*", "")
+        if (lastIndex < clean.length) {
+            val remaining = clean.substring(lastIndex).replace("*", "")
             append(remaining)
         }
     }
@@ -1224,45 +1266,133 @@ fun parseMarkdownInline(text: String): AnnotatedString {
 
 @Composable
 fun RenderMarkdownBlocks(text: String) {
-    val paragraphs = text.split("\n\n")
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    val cleanText = cleanLatexAndSymbols(text)
+    // Normalize dividers and numbered headings so they always have breathing room
+    val normalizedText = cleanText
+        .replace(Regex("(?m)^([-_*]{3,})$"), "\n\n$1\n\n")
+        .replace(Regex("(?m)^(\\d+\\.\\s+[A-Z\"].*)$"), "\n\n$1\n\n")
+    val paragraphs = normalizedText.split(Regex("\\n{2,}"))
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         paragraphs.forEach { paragraph ->
             val trimmed = paragraph.trim()
-            if (trimmed.startsWith("###") || trimmed.startsWith("##") || trimmed.startsWith("#")) {
-                val headingText = trimmed.replace(Regex("^#+\\s*"), "").replace("*", "")
-                Text(
-                    text = headingText,
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp),
-                    color = MaterialTheme.colorScheme.primary
+            if (trimmed.isEmpty()) return@forEach
+
+            // 1. Horizontal Dividers
+            if (trimmed == "---" || trimmed == "***" || trimmed == "___") {
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                 )
-            } else if (trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("• ")) {
+            }
+            // 2. Headings (###, ##, #)
+            else if (trimmed.startsWith("###") || trimmed.startsWith("##") || trimmed.startsWith("#")) {
+                val headingText = trimmed.replace(Regex("^#+\\s*"), "").replace("*", "")
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp, bottom = 2.dp)
+                ) {
+                    Text(
+                        text = headingText,
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp),
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+            }
+            // 3. Numbered Section Titles (e.g. 1. Strategi Integrasi AI...)
+            else if (Regex("^\\d+\\.\\s+[A-Z\"].*").matches(trimmed) && trimmed.length < 130 && !trimmed.contains("\n")) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp, bottom = 2.dp)
+                ) {
+                    Text(
+                        text = trimmed.replace("*", ""),
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.5.sp,
+                            lineHeight = 19.sp
+                        ),
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+            }
+            // 4. Bullet / Numbered List Items
+            else if (trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("• ") ||
+                     trimmed.lines().any { it.trim().startsWith("- ") || it.trim().startsWith("* ") || it.trim().startsWith("• ") }) {
                 val lines = trimmed.split("\n")
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    lines.forEach { line ->
-                        val cleanLine = line.replace(Regex("^[-*•]\\s*"), "")
+                    lines.forEachIndexed { index, line ->
+                        val rawLine = line.trim()
+                        if (rawLine.isBlank()) return@forEachIndexed
+
+                        val isIndented = line.startsWith("  ") || line.startsWith("\t") || line.startsWith("    ")
+                        val isBullet = rawLine.startsWith("- ") || rawLine.startsWith("* ") || rawLine.startsWith("• ")
+                        val cleanLine = if (isBullet) rawLine.replace(Regex("^[-*•]\\s*"), "") else rawLine
+
+                        // Detect sub-points (Cara Kerja, Fokus Kritis, dsb.)
+                        val isSubPoint = isIndented ||
+                            cleanLine.startsWith("Cara Kerja", ignoreCase = true) ||
+                            cleanLine.startsWith("*Cara Kerja", ignoreCase = true) ||
+                            cleanLine.startsWith("_Cara Kerja", ignoreCase = true) ||
+                            cleanLine.startsWith("Cara Praktis", ignoreCase = true) ||
+                            cleanLine.startsWith("*Cara Praktis", ignoreCase = true) ||
+                            cleanLine.startsWith("Fokus Kritis", ignoreCase = true) ||
+                            cleanLine.startsWith("*Fokus Kritis", ignoreCase = true) ||
+                            cleanLine.startsWith("Contoh", ignoreCase = true) ||
+                            cleanLine.startsWith("*Contoh", ignoreCase = true) ||
+                            cleanLine.startsWith("Tindak Lanjut", ignoreCase = true) ||
+                            cleanLine.startsWith("*Tindak Lanjut", ignoreCase = true) ||
+                            cleanLine.startsWith("Jangan hanya", ignoreCase = true) ||
+                            cleanLine.startsWith("*Jangan hanya", ignoreCase = true)
+
+                        // Add top breathing space before a new main method/bullet item (not sub-point, not first line)
+                        if (!isSubPoint && isBullet && index > 0) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                        }
+
                         Row(
                             verticalAlignment = Alignment.Top,
-                            modifier = Modifier.padding(start = 2.dp)
+                            modifier = Modifier.padding(start = if (isSubPoint) 16.dp else 2.dp)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .padding(top = 7.dp, end = 8.dp)
-                                    .size(5.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary)
-                            )
+                            if (isSubPoint) {
+                                Text(
+                                    text = "↳",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.85f),
+                                    modifier = Modifier.padding(end = 6.dp, top = 1.dp)
+                                )
+                            } else if (isBullet) {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(top = 7.dp, end = 8.dp)
+                                        .size(5.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.primary)
+                                )
+                            }
                             Text(
                                 text = parseMarkdownInline(cleanLine),
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     fontSize = 13.sp,
                                     lineHeight = 19.sp
                                 ),
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = if (isSubPoint) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.92f) else MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
                 }
-            } else {
+            }
+            // 5. Normal paragraphs
+            else {
                 Text(
                     text = parseMarkdownInline(trimmed),
                     style = MaterialTheme.typography.bodyMedium.copy(

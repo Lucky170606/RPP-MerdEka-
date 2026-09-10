@@ -33,38 +33,66 @@ enum class AiSfxType {
  */
 enum class VoicePersona(
     val displayName: String,
+    val intonation: String,
     val description: String,
     val pitch: Float,
     val speechRate: Float,
-    val isMale: Boolean
+    val preferDeepTone: Boolean,
+    val samplePhrase: String
 ) {
-    IBU_PERTIWI(
-        displayName = "Ibu Guru Pertiwi (Wanita - Lembut & Ramah)",
-        description = "Suara wanita Indonesia santun, artikulasi jelas, hangat, dan mengayomi.",
-        pitch = 1.08f,
-        speechRate = 0.95f,
-        isMale = false
+    PENDIDIK_BIJAK(
+        displayName = "Pendidik Bijak",
+        intonation = "Tenang, terukur, dan instruksional",
+        description = "Pelafalan artikulatif, tempo tertata rapi, dan berwibawa untuk sesi telaah materi kurikulum yang panjang.",
+        pitch = 1.22f,
+        speechRate = 0.92f,
+        preferDeepTone = false,
+        samplePhrase = "Halo bapak dan ibu guru. Mari kita telaah panduan pembelajaran ini secara tenang, jelas, dan terukur."
+    ),
+    BINTANG_RADIO(
+        displayName = "Bintang Radio",
+        intonation = "Modulatif, hangat, dan mengalir khas penyiar",
+        description = "Gaya siaran profesional dengan vokal beresonansi merdu, artikulasi empuk, dan modulasi nada yang nyaman dinikmati.",
+        pitch = 0.95f,
+        speechRate = 0.96f,
+        preferDeepTone = true,
+        samplePhrase = "Halo rekan guru di seluruh nusantara! Selamat datang di sesi inspirasi pembelajaran kreatif hari ini."
+    ),
+    KREATOR_MEDSOS(
+        displayName = "Bintang Iklan Medsos (Muda & Kreatif)",
+        intonation = "Ekspresif, punchy, ceria, dan antusias kekinian",
+        description = "Gaya penyampaian segar ala konten kreator media sosial, ritme lincah, hidup, dan memotivasi.",
+        pitch = 1.35f,
+        speechRate = 1.08f,
+        preferDeepTone = false,
+        samplePhrase = "Hai bapak ibu guru hebat! Yuk kita spill ide asesmen seru dan kekinian yang bikin siswa auto-semangat belajar!"
     ),
     PAK_ARIS(
-        displayName = "Pak Guru Aris (Pria - Berwibawa & Tenang)",
-        description = "Suara pria Indonesia berwibawa, intonasi tenang, tegas, dan membimbing.",
-        pitch = 0.75f,
-        speechRate = 0.92f,
-        isMale = true
+        displayName = "Penyiar Podcast",
+        intonation = "Santai, mendalam, dan reflektif khas podcast",
+        description = "Gaya berbincang hangat, tempo mengalir santai dan dekat di telinga, sangat pas untuk eksplorasi gagasan kurikulum.",
+        pitch = 0.85f,
+        speechRate = 0.94f,
+        preferDeepTone = true,
+        samplePhrase = "Selamat datang di ruang bincang guru. Mari kita bedah gagasan dan inspirasi pembelajaran ini secara santai dan mendalam."
     ),
     ASISTEN_CERDAS(
-        displayName = "Asisten Cerdas (Netral - Lugas & Baku)",
-        description = "Sintesis cepat standar dengan pengucapan formal pedagogik Kurikulum Merdeka.",
-        pitch = 1.00f,
+        displayName = "Asisten Cerdas",
+        intonation = "Lugas, baku, dan presisi",
+        description = "Pengucapan standar bahasa Indonesia formal dan tempo efisien untuk sintesis administrasi cepat.",
+        pitch = 1.18f,
         speechRate = 1.00f,
-        isMale = false
+        preferDeepTone = false,
+        samplePhrase = "Sistem siap. Modul dan perangkat ajar Kurikulum Merdeka dapat langsung diproses."
     ),
     SAHABAT_CERIA(
-        displayName = "Sahabat Belajar (Ceria & Enerjik)",
-        description = "Nada dinamis, bersemangat, dan ramah untuk pembelajaran aktif peserta didik.",
-        pitch = 1.22f,
+        displayName = "Sahabat Belajar",
+        intonation = "Ceria, cerah, dan dinamis",
+        description = "Gaya ramah penuh semangat untuk pembelajaran aktif, asesmen formatif, dan penguatan projek P5.",
+        pitch = 1.38f,
         speechRate = 1.05f,
-        isMale = false
+        preferDeepTone = false,
+        samplePhrase = "Semangat pagi! Yuk kita rancang pembelajaran seru dan bermakna untuk siswa!"
     )
 }
 
@@ -97,7 +125,7 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
     private val _isVoiceEnabled = MutableStateFlow(true)
     val isVoiceEnabled: StateFlow<Boolean> = _isVoiceEnabled.asStateFlow()
 
-    private val _currentPersona = MutableStateFlow(VoicePersona.IBU_PERTIWI)
+    private val _currentPersona = MutableStateFlow(VoicePersona.PENDIDIK_BIJAK)
     val currentPersona: StateFlow<VoicePersona> = _currentPersona.asStateFlow()
 
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
@@ -107,11 +135,11 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
         val prefs = context.getSharedPreferences("rpp_audio_prefs", Context.MODE_PRIVATE)
         _isSoundEnabled.value = prefs.getBoolean("sfx_enabled", true)
         _isVoiceEnabled.value = prefs.getBoolean("voice_enabled", true)
-        val personaName = prefs.getString("persona", VoicePersona.IBU_PERTIWI.name)
+        val personaName = prefs.getString("persona", VoicePersona.PENDIDIK_BIJAK.name)
         _currentPersona.value = try {
-            VoicePersona.valueOf(personaName ?: VoicePersona.IBU_PERTIWI.name)
+            VoicePersona.valueOf(personaName ?: VoicePersona.PENDIDIK_BIJAK.name)
         } catch (e: Exception) {
-            VoicePersona.IBU_PERTIWI
+            VoicePersona.PENDIDIK_BIJAK
         }
 
         // Initialize Native Offline TTS
@@ -227,11 +255,13 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
     }
 
     /**
-     * Finds and applies the best offline voice matching persona gender and acoustic qualities
+     * Finds and applies the best offline voice matching persona acoustic qualities (intonation, tone, rate).
+     * Automatically balances resonance and frequency based on available TTS packages.
      */
     private fun applyPersonaToOfflineTts(persona: VoicePersona) {
         var appliedPitch = persona.pitch
         var appliedRate = persona.speechRate
+        var isHighClarityVoiceDetected = false
 
         try {
             val voices: Set<Voice>? = tts?.voices
@@ -245,7 +275,7 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
                 if (idVoices.isNotEmpty()) {
                     var targetVoice: Voice? = null
 
-                    if (persona.isMale) {
+                    if (persona.preferDeepTone) {
                         targetVoice = idVoices.firstOrNull { voice ->
                             val name = voice.name.lowercase()
                             name.contains("x-idc") || name.contains("x-ide") || name.contains("x-idf") ||
@@ -256,25 +286,43 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
                         }
 
                         if (targetVoice != null) {
-                            appliedPitch = 0.88f
-                            appliedRate = 0.92f
+                            appliedPitch = when (persona) {
+                                VoicePersona.BINTANG_RADIO -> 0.96f
+                                VoicePersona.PAK_ARIS -> 0.86f
+                                else -> persona.pitch
+                            }
+                            appliedRate = persona.speechRate
                         } else {
                             targetVoice = idVoices.firstOrNull()
-                            appliedPitch = 0.70f
-                            appliedRate = 0.90f
+                            appliedPitch = when (persona) {
+                                VoicePersona.BINTANG_RADIO -> 0.90f
+                                VoicePersona.PAK_ARIS -> 0.80f
+                                else -> persona.pitch
+                            }
+                            appliedRate = persona.speechRate
                         }
                     } else {
+                        // High/bright clarity voice selection
                         targetVoice = idVoices.firstOrNull { voice ->
                             val name = voice.name.lowercase()
                             name.contains("x-dfz") || name.contains("x-ida") || name.contains("x-idd") ||
                                 name.contains("female") || name.contains("woman") || name.contains("wanita") ||
-                                name.contains("gadis") || name.contains("nur") || name.contains("pertiwi") ||
+                                name.contains("gadis") || name.contains("nur") ||
                                 name.contains("f0") || name.contains("f1") || name.contains("#female") ||
                                 voice.features?.any { it.lowercase().contains("female") } == true
-                        } ?: idVoices.firstOrNull { voice ->
-                            val name = voice.name.lowercase()
-                            !name.contains("x-idc") && !name.contains("x-ide") && !name.contains("x-idf") && !name.contains("male")
-                        } ?: idVoices.firstOrNull()
+                        }
+
+                        if (targetVoice != null) {
+                            isHighClarityVoiceDetected = true
+                        } else {
+                            targetVoice = idVoices.firstOrNull { voice ->
+                                val name = voice.name.lowercase()
+                                val isExplicitDeep = name.contains("x-idc") || name.contains("x-ide") || name.contains("x-idf") ||
+                                    name.contains("male") || name.contains("man") || name.contains("pria") ||
+                                    voice.features?.any { it.lowercase().contains("male") } == true
+                                !isExplicitDeep
+                            } ?: idVoices.firstOrNull()
+                        }
                     }
 
                     if (targetVoice != null) {
@@ -282,14 +330,29 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
                             tts?.voice = targetVoice
                         } catch (_: Exception) {}
                     }
-                } else if (persona.isMale) {
-                    appliedPitch = 0.70f
                 }
-            } else if (persona.isMale) {
-                appliedPitch = 0.70f
             }
-        } catch (_: Exception) {
-            if (persona.isMale) appliedPitch = 0.70f
+        } catch (_: Exception) {}
+
+        // Acoustic Formant Calibration for clear & bright registers:
+        if (!persona.preferDeepTone) {
+            appliedPitch = if (isHighClarityVoiceDetected) {
+                when (persona) {
+                    VoicePersona.PENDIDIK_BIJAK -> 1.08f
+                    VoicePersona.KREATOR_MEDSOS -> 1.25f
+                    VoicePersona.SAHABAT_CERIA -> 1.22f
+                    VoicePersona.ASISTEN_CERDAS -> 1.08f
+                    else -> 1.10f
+                }
+            } else {
+                when (persona) {
+                    VoicePersona.PENDIDIK_BIJAK -> 1.24f
+                    VoicePersona.KREATOR_MEDSOS -> 1.36f
+                    VoicePersona.SAHABAT_CERIA -> 1.40f
+                    VoicePersona.ASISTEN_CERDAS -> 1.20f
+                    else -> 1.26f
+                }
+            }
         }
 
         try {
@@ -323,6 +386,14 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
 
         // Educational Abbreviations Expansion
         return cleanText
+            // LaTeX and symbols replacement for natural speech
+            .replace(Regex("\\$\\s*\\\\(?:right|left|Right|Left)?arrow\\s*\\$|\\\\(?:right|left|Right|Left)?arrow|\\$\\s*\\\\to\\s*\\$|\\\\to"), " menjadi ")
+            .replace(Regex("\\$\\s*\\\\(?:Leftrightarrow|leftrightarrow)\\s*\\$|\\\\(?:Leftrightarrow|leftrightarrow)"), " bolak-balik ")
+            .replace(Regex("(?<=\\S)\\s*[-=]>\\s*|\\s*→\\s*|\\s*⇒\\s*"), " menjadi ")
+            .replace(Regex("\\$\\s*\\\\times\\s*\\$|\\\\times|×"), " kali ")
+            .replace(Regex("\\$\\s*\\\\div\\s*\\$|\\\\div|÷"), " bagi ")
+            .replace(Regex("\\$\\s*\\\\pm\\s*\\$|\\\\pm|±"), " plus minus ")
+            .replace(Regex("\\$"), "")
             .replace(Regex("\\bRPP\\b", RegexOption.IGNORE_CASE), "R P P")
             .replace(Regex("\\bModul Ajar\\b", RegexOption.IGNORE_CASE), "Modul Ajar")
             .replace(Regex("\\bCP\\b", RegexOption.IGNORE_CASE), "Capaian Pembelajaran")
@@ -358,10 +429,11 @@ class SoundManager private constructor(private val context: Context) : TextToSpe
             .replace(Regex("Kelas\\s+III\\b", RegexOption.IGNORE_CASE), "Kelas 3")
             .replace(Regex("Kelas\\s+II\\b", RegexOption.IGNORE_CASE), "Kelas 2")
             .replace(Regex("Kelas\\s+I\\b", RegexOption.IGNORE_CASE), "Kelas 1")
-            // Lists, bullet points & table symbols
+            // Lists, bullet points & numbered items (keep the number with comma pause so TTS speaks it)
+            .replace(Regex("(?:^|(?<=[\\s(]))(\\d+)\\.\\s+", RegexOption.MULTILINE), "$1, ")
+            .replace(Regex("(?:^|(?<=[\\s(]))([a-zA-Z])\\.\\s+", RegexOption.MULTILINE), "$1, ")
             .replace(Regex("^[-*•]\\s*", RegexOption.MULTILINE), ", ")
-            .replace(Regex("^\\d+\\.\\s*", RegexOption.MULTILINE), ", ")
-            .replace(Regex("[|~>_=]"), " ")
+            .replace(Regex("[|~_=]"), " ")
     }
 
     /**

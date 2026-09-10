@@ -723,7 +723,7 @@ fun TeacherProfileScreen(
                                                         .clickable {
                                                             soundManager.setPersona(persona)
                                                             soundManager.playSfx(AiSfxType.BUTTON_TAP)
-                                                            soundManager.speak("Halo! Saya siap membantu bapak dan ibu guru merancang modul ajar Kurikulum Merdeka.")
+                                                            soundManager.speak(persona.samplePhrase)
                                                         },
                                                     color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f) else Color.Transparent,
                                                     border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
@@ -742,16 +742,22 @@ fun TeacherProfileScreen(
                                                                 selected = isSelected,
                                                                 onClick = {
                                                                     soundManager.setPersona(persona)
-                                                                    soundManager.speak("Halo! Saya siap membantu bapak dan ibu guru merancang modul ajar Kurikulum Merdeka.")
+                                                                    soundManager.speak(persona.samplePhrase)
                                                                 },
                                                                 modifier = Modifier.size(24.dp)
                                                             )
-                                                            Column {
+                                                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                                                 Text(
                                                                     text = persona.displayName,
-                                                                    fontSize = 12.sp,
-                                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                                    fontSize = 12.5.sp,
+                                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
                                                                     color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                                                )
+                                                                Text(
+                                                                    text = "🎙️ Intonasi: ${persona.intonation}",
+                                                                    fontSize = 10.sp,
+                                                                    fontWeight = FontWeight.Medium,
+                                                                    color = MaterialTheme.colorScheme.primary
                                                                 )
                                                                 Text(
                                                                     text = persona.description,
@@ -765,7 +771,7 @@ fun TeacherProfileScreen(
                                                         IconButton(
                                                             onClick = {
                                                                 soundManager.setPersona(persona)
-                                                                soundManager.speak("Salam hangat Bapak Ibu guru! Ini contoh suara saya.")
+                                                                soundManager.speak(persona.samplePhrase)
                                                             },
                                                             modifier = Modifier.size(32.dp)
                                                         ) {

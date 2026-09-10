@@ -101,7 +101,7 @@ fun ObservationJournalScreen(
                 title = {
                     Column {
                         Text(
-                            "Jurnal Observasi & Antarteman",
+                            "Jurnal Observasi",
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp
                         )

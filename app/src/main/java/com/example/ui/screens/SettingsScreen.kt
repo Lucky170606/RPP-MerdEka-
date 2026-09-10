@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -295,27 +296,95 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                                 var currentPersona by remember { mutableStateOf(soundManager.currentPersona.value) }
 
                                 com.example.util.VoicePersona.values().forEach { persona ->
+                                    val isSelected = (currentPersona == persona)
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable {
                                                 currentPersona = persona
                                                 soundManager.setPersona(persona)
+                                                soundManager.speak(persona.samplePhrase)
                                             }
                                             .padding(vertical = 8.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         RadioButton(
-                                            selected = (currentPersona == persona),
+                                            selected = isSelected,
                                             onClick = {
                                                 currentPersona = persona
                                                 soundManager.setPersona(persona)
+                                                soundManager.speak(persona.samplePhrase)
                                             }
                                         )
-                                        Column(modifier = Modifier.padding(start = 8.dp)) {
-                                            Text(text = persona.displayName, fontWeight = FontWeight.Bold)
-                                            Text(text = persona.description, style = MaterialTheme.typography.bodySmall)
+                                        Column(modifier = Modifier.weight(1f).padding(start = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                            Text(text = persona.displayName, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                            Text(
+                                                text = "🎙️ Intonasi: ${persona.intonation}",
+                                                fontSize = 10.5.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                            Text(text = persona.description, style = MaterialTheme.typography.bodySmall, fontSize = 11.sp, lineHeight = 15.sp)
                                         }
+                                        IconButton(
+                                            onClick = {
+                                                currentPersona = persona
+                                                soundManager.setPersona(persona)
+                                                soundManager.speak(persona.samplePhrase)
+                                            }
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.PlayArrow,
+                                                contentDescription = "Dengarkan Contoh Suara",
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    }
+                                }
+
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(vertical = 4.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                )
+
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                            RoundedCornerShape(8.dp)
+                                        )
+                                        .padding(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = "💡 Mengapa suara di HP bisa terdengar mirip?",
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 11.5.sp,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = "Aplikasi menggunakan mesin suara offline bawaan HP Anda. Jika HP Anda saat ini baru memasang 1 paket suara dasar, Anda dapat membuka Pengaturan TTS Android untuk mengunduh ragam vokal alami wanita/pria dari Google Speech Services.",
+                                        fontSize = 11.sp,
+                                        lineHeight = 15.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    OutlinedButton(
+                                        onClick = {
+                                            try {
+                                                val intent = Intent("com.android.settings.TTS_SETTINGS")
+                                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                                context.startActivity(intent)
+                                            } catch (_: Exception) {
+                                                Toast.makeText(context, "Tidak dapat membuka pengaturan TTS perangkat", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth().height(36.dp),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Buka Pengaturan Suara HP (TTS)", fontSize = 11.5.sp)
                                     }
                                 }
                             }
