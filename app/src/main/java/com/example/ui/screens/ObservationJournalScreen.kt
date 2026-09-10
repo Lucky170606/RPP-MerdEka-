@@ -106,7 +106,7 @@ fun ObservationJournalScreen(
                             fontSize = 18.sp
                         )
                         Text(
-                            "Instrumen Sikap Profil Pelajar Pancasila",
+                            "Instrumen Sikap P3",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
